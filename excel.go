@@ -90,7 +90,7 @@ func GenerateExcelReport(results []TestResult, exportPath string) (string, error
 	})
 
 	headers := []string{
-		"#", "Timestamp", "Server Nickname", "City", "Country", "Continent",
+		"#", "Timestamp", "ISP / Operator", "Server Nickname", "City", "Country", "Continent",
 		"Protocol", "Port", "Connect Time (s)", "Status", "Ping (ms)", "Jitter (ms)",
 		"Download (Mbps)", "Upload (Mbps)", "Protocol Tweaks", "Amnezia Config",
 		"Server Routing", "Custom SNI", "Large TLS", "Internal DNS", "Quality Grade",
@@ -128,6 +128,10 @@ func GenerateExcelReport(results []TestResult, exportPath string) (string, error
 			rowStyle = redRowStyle
 		}
 
+		ispStr := r.ISP
+		if ispStr == "" {
+			ispStr = "Default / Direct"
+		}
 		tweaksStr := "Disabled"
 		if r.ProtocolTweaks {
 			tweaksStr = "Enabled"
@@ -137,17 +141,24 @@ func GenerateExcelReport(results []TestResult, exportPath string) (string, error
 			tlsStr = "Yes"
 		}
 		sniStr := r.CustomSNI
-		if sniStr == "" {
+		if r.Protocol != "stealth" && r.Protocol != "wstunnel" {
+			sniStr = "-"
+		} else if sniStr == "" {
 			sniStr = "-"
 		}
 		amneziaStr := r.AntiCensorshipMode
-		if amneziaStr == "" {
+		if !r.ProtocolTweaks {
+			amneziaStr = "Disabled"
+		} else if amneziaStr == "" || amneziaStr == "true" {
+			amneziaStr = "Default"
+		} else if amneziaStr == "false" {
 			amneziaStr = "None"
 		}
 
 		vals := []interface{}{
 			rowIdx + 1,
 			r.Timestamp,
+			ispStr,
 			r.Location,
 			r.City,
 			r.Country,
@@ -181,25 +192,26 @@ func GenerateExcelReport(results []TestResult, exportPath string) (string, error
 	colWidths := map[string]float64{
 		"A": 6,  // #
 		"B": 20, // Timestamp
-		"C": 18, // Server Nickname
-		"D": 16, // City
-		"E": 18, // Country
-		"F": 14, // Continent
-		"G": 12, // Protocol
-		"H": 10, // Port
-		"I": 16, // Connect Time
-		"J": 12, // Status
-		"K": 12, // Ping
-		"L": 12, // Jitter
-		"M": 16, // Download
-		"N": 16, // Upload
-		"O": 16, // Protocol Tweaks
-		"P": 25, // Amnezia Config
-		"Q": 16, // Server Routing
-		"R": 18, // Custom SNI
-		"S": 12, // Large TLS
-		"T": 14, // Internal DNS
-		"U": 18, // Quality Grade
+		"C": 22, // ISP / Operator
+		"D": 18, // Server Nickname
+		"E": 16, // City
+		"F": 18, // Country
+		"G": 14, // Continent
+		"H": 12, // Protocol
+		"I": 10, // Port
+		"J": 16, // Connect Time
+		"K": 12, // Status
+		"L": 12, // Ping
+		"M": 12, // Jitter
+		"N": 16, // Download
+		"O": 16, // Upload
+		"P": 16, // Protocol Tweaks
+		"Q": 25, // Amnezia Config
+		"R": 16, // Server Routing
+		"S": 18, // Custom SNI
+		"T": 12, // Large TLS
+		"U": 14, // Internal DNS
+		"V": 18, // Quality Grade
 	}
 	for col, width := range colWidths {
 		_ = f.SetColWidth(sheetName, col, col, width)
