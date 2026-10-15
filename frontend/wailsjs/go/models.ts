@@ -43,6 +43,8 @@ export namespace main {
 	    customSni: string;
 	    largeTls: boolean;
 	    internalDns: string;
+	    isp: string;
+	    isResume: boolean;
 	    selectionMode: string;
 	    testPing: boolean;
 	    testDownload: boolean;
@@ -64,6 +66,8 @@ export namespace main {
 	        this.customSni = source["customSni"];
 	        this.largeTls = source["largeTls"];
 	        this.internalDns = source["internalDns"];
+	        this.isp = source["isp"];
+	        this.isResume = source["isResume"];
 	        this.selectionMode = source["selectionMode"];
 	        this.testPing = source["testPing"];
 	        this.testDownload = source["testDownload"];
@@ -111,6 +115,7 @@ export namespace main {
 	    customSni: string;
 	    largeTls: boolean;
 	    internalDns: string;
+	    isp: string;
 	    timestamp: string;
 	
 	    static createFrom(source: any = {}) {
@@ -139,6 +144,7 @@ export namespace main {
 	        this.customSni = source["customSni"];
 	        this.largeTls = source["largeTls"];
 	        this.internalDns = source["internalDns"];
+	        this.isp = source["isp"];
 	        this.timestamp = source["timestamp"];
 	    }
 	}

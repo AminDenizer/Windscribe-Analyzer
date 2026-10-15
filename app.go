@@ -62,7 +62,7 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// Init DB
-	dbPath := filepath.Join(".", "windscribe_results.db")
+	dbPath := getCachePath("windscribe_results.db")
 	db, err := NewDatabaseManager(dbPath)
 	if err != nil {
 		fmt.Println("DB Init Error:", err)
@@ -74,6 +74,11 @@ func (a *App) startup(ctx context.Context) {
 
 	// Init Orchestrator
 	a.orchestrator = NewOrchestrator(a.db, a.worker)
+
+	// Automatically sanitize legacy database records if any exist
+	if locs, err := a.GetAllLocations(); err == nil && len(locs) > 0 {
+		a.db.SanitizeLegacyRecords(locs)
+	}
 }
 
 // GetLocations returns history stats to help frontend populate stuff
@@ -262,7 +267,7 @@ func (a *App) ExportExcelReport() (string, error) {
 	}
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	outName := filepath.Join(".", fmt.Sprintf("Windscribe_Results_%s.xlsx", timestamp))
+	outName := getCachePath(fmt.Sprintf("Windscribe_Results_%s.xlsx", timestamp))
 	return GenerateExcelReport(results, outName)
 }
 
