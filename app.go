@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -21,6 +23,25 @@ type LocationData struct {
 	Display   string `json:"display"`
 }
 
+// AmneziaConfigItem represents an Amnezia preset
+type AmneziaConfigItem struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+var defaultAmneziaConfigs = []AmneziaConfigItem{
+	{ID: "A", Name: "A - No Junk Russia Primary"},
+	{ID: "B", Name: "B - No Junk Russia Alt"},
+	{ID: "C", Name: "C - With Junk Russia Primary"},
+	{ID: "D", Name: "D - With Junk Russia Alt"},
+	{ID: "E", Name: "E - Baseline No Junk"},
+	{ID: "F", Name: "F - Baseline With Junk"},
+	{ID: "G", Name: "G - Popular Russia Website with Junk"},
+	{ID: "H", Name: "H - Iran 26 May 2026"},
+	{ID: "I", Name: "I - UAE and Iran Legacy"},
+	{ID: "J", Name: "J - Iran Junk Packets"},
+	{ID: "None", Name: "None (Disabled)"},
+}
 
 // App struct
 type App struct {
@@ -94,23 +115,45 @@ func getContinent(code string) string {
 	}
 }
 
-// GetAllLocations fetches available locations from the live API, cached JSON, or embedded CSV
-func (a *App) GetAllLocations() ([]LocationData, error) {
-	var locs []LocationData
-	
-	cachePath := "cached_locations.json"
+func getCachePath(filename string) string {
 	if ex, err := os.Executable(); err == nil {
-		cachePath = filepath.Join(filepath.Dir(ex), "cached_locations.json")
+		return filepath.Join(filepath.Dir(ex), filename)
+	}
+	return filepath.Join(".", filename)
+}
+
+// GetAllLocations fetches available locations from live API or cached file
+func (a *App) GetAllLocations() ([]LocationData, error) {
+	return a.fetchLocations(false)
+}
+
+// RefreshLocations forces online fetch and updates cache
+func (a *App) RefreshLocations() ([]LocationData, error) {
+	return a.fetchLocations(true)
+}
+
+func (a *App) fetchLocations(forceOnline bool) ([]LocationData, error) {
+	cachePath := getCachePath("cached_locations.json")
+
+	// 1. If not forcing online, try reading cache first if it exists
+	if !forceOnline {
+		if cachedData, err := os.ReadFile(cachePath); err == nil {
+			var cachedLocs []LocationData
+			if err := json.Unmarshal(cachedData, &cachedLocs); err == nil && len(cachedLocs) > 0 {
+				return cachedLocs, nil
+			}
+		}
 	}
 
-	// 1. Try to fetch from live API
-	client := &http.Client{Timeout: 5 * time.Second}
+	// 2. Try online fetch
+	client := &http.Client{Timeout: 8 * time.Second}
 	resp, err := client.Get("https://assets.windscribe.com/serverlist/mob-v2/1/0")
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {
 			var apiResp WindscribeAPIResponse
 			if err := json.NewDecoder(resp.Body).Decode(&apiResp); err == nil {
+				var locs []LocationData
 				for _, country := range apiResp.Data {
 					continent := getContinent(country.CountryCode)
 					for _, group := range country.Groups {
@@ -124,33 +167,115 @@ func (a *App) GetAllLocations() ([]LocationData, error) {
 					}
 				}
 				if len(locs) > 0 {
-					// Save to cache asynchronously
-					go func(l []LocationData) {
-						if data, err := json.Marshal(l); err == nil {
-							_ = os.WriteFile(cachePath, data, 0644)
-						}
-					}(locs)
-					return locs, nil // Success from API
+					if data, err := json.Marshal(locs); err == nil {
+						_ = os.WriteFile(cachePath, data, 0644)
+					}
+					return locs, nil
 				}
 			}
 		}
 	}
 
-	// 2. Fallback to cached file if API fails
+	// 3. Fallback to cached file
 	if cachedData, err := os.ReadFile(cachePath); err == nil {
 		var cachedLocs []LocationData
 		if err := json.Unmarshal(cachedData, &cachedLocs); err == nil && len(cachedLocs) > 0 {
-			return cachedLocs, nil // Success from Cache
+			return cachedLocs, nil
 		}
 	}
 
 	return nil, fmt.Errorf("failed to fetch locations from network and no valid cache found")
 }
 
+// GetAmneziaConfigs gets configs from cache or returns defaults
+func (a *App) GetAmneziaConfigs() ([]AmneziaConfigItem, error) {
+	return a.fetchAmneziaConfigs(false)
+}
+
+// RefreshAmneziaConfigs forces refreshing amnezia configs online
+func (a *App) RefreshAmneziaConfigs() ([]AmneziaConfigItem, error) {
+	return a.fetchAmneziaConfigs(true)
+}
+
+func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error) {
+	cachePath := getCachePath("cached_amnezia_configs.json")
+
+	// Read cache if not forcing online
+	if !forceOnline {
+		if data, err := os.ReadFile(cachePath); err == nil {
+			var cached []AmneziaConfigItem
+			if err := json.Unmarshal(data, &cached); err == nil && len(cached) > 0 {
+				return cached, nil
+			}
+		}
+	}
+
+	// Save defaults if cache doesn't exist
+	if data, err := json.MarshalIndent(defaultAmneziaConfigs, "", "  "); err == nil {
+		_ = os.WriteFile(cachePath, data, 0644)
+	}
+
+	return defaultAmneziaConfigs, nil
+}
+
+// UpdateOnlineResources updates both locations and configs in background once VPN is up
+func (a *App) UpdateOnlineResources() {
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("https://assets.windscribe.com/serverlist/mob-v2/1/0")
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var apiResp WindscribeAPIResponse
+			if err := json.NewDecoder(resp.Body).Decode(&apiResp); err == nil {
+				var locs []LocationData
+				for _, country := range apiResp.Data {
+					continent := getContinent(country.CountryCode)
+					for _, group := range country.Groups {
+						locs = append(locs, LocationData{
+							Location:  group.Nick,
+							City:      group.City,
+							Region:    country.Name,
+							Continent: continent,
+							Display:   fmt.Sprintf("%s - %s (%s)", country.Name, group.City, group.Nick),
+						})
+					}
+				}
+				if len(locs) > 0 {
+					cachePath := getCachePath("cached_locations.json")
+					if data, err := json.Marshal(locs); err == nil {
+						_ = os.WriteFile(cachePath, data, 0644)
+					}
+				}
+			}
+		}
+	}
+}
+
+// ExportExcelReport exports all historical test results into a styled Excel file
+func (a *App) ExportExcelReport() (string, error) {
+	results, err := a.db.GetAllResults()
+	if err != nil {
+		return "", err
+	}
+	if len(results) == 0 {
+		return "", fmt.Errorf("no test results recorded in database yet")
+	}
+
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	outName := filepath.Join(".", fmt.Sprintf("Windscribe_Results_%s.xlsx", timestamp))
+	return GenerateExcelReport(results, outName)
+}
+
+// OpenExcelFile opens the generated Excel file in default OS application
+func (a *App) OpenExcelFile(filePath string) error {
+	cmd := exec.Command("cmd.exe", "/c", "start", "", filePath)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	return cmd.Start()
+}
+
 // StartTest starts the testing routine
 func (a *App) StartTest(config TestConfig) {
-	// Run in goroutine so it doesn't block UI
-	go a.orchestrator.StartTesting(a.ctx, config, func(update EventUpdate) {
+	go a.orchestrator.StartTesting(a.ctx, config, a.UpdateOnlineResources, func(update EventUpdate) {
 		runtime.EventsEmit(a.ctx, "test_update", update)
 	})
 }
