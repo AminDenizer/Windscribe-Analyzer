@@ -10,68 +10,101 @@
     <div class="app-container">
         <!-- Sidebar Settings -->
         <div class="sidebar">
-            <h2><span class="glow">W</span>indscribe <span class="glow">A</span>nalyzer</h2>
+            <div class="logo-area">
+                <h2><span class="glow">W</span>indscribe <span class="glow">A</span>nalyzer</h2>
+                <span class="badge-version">v2.0 Pro</span>
+            </div>
             
-            <div class="form-group">
-                <label>Amnezia Mode</label>
-                <select id="amneziaMode">
-                    <option value="I - Iran Legacy">I - Iran Legacy</option>
-                    <option value="A - No Junk Russia Primary">A - No Junk Russia Primary</option>
-                    <option value="B - No Junk Russia Alt">B - No Junk Russia Alt</option>
-                    <option value="C - With Junk Russia Primary">C - With Junk Russia Primary</option>
-                    <option value="D - With Junk Russia Alt">D - With Junk Russia Alt</option>
-                    <option value="E - Baseline No Junk">E - Baseline No Junk</option>
-                    <option value="F - Baseline With Junk">F - Baseline With Junk</option>
-                    <option value="G - Popular Website with Junk">G - Popular Website with Junk</option>
-                    <option value="H - Iran 26 May 2026">H - Iran 26 May 2026</option>
-                    <option value="None">None</option>
-                </select>
+            <!-- Anti-Censorship Panel -->
+            <div class="section-card">
+                <div class="section-header">
+                    <span>🛡️ Anti-Censorship</span>
+                </div>
+
+                <div class="form-group toggle-row">
+                    <label for="protocolTweaks">Protocol Tweaks</label>
+                    <label class="switch">
+                        <input type="checkbox" id="protocolTweaks" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label style="display:flex; justify-content:space-between; align-items:center;">
+                        Amnezia Config
+                        <button id="btnRefreshAmnezia" class="icon-btn" title="Refresh Amnezia Configs">🔄</button>
+                    </label>
+                    <select id="amneziaConfig" class="modern-select">
+                        <option value="J - Iran Junk Packets">J - Iran Junk Packets</option>
+                        <option value="I - UAE and Iran Legacy">I - UAE and Iran Legacy</option>
+                        <option value="H - Iran 26 May 2026">H - Iran 26 May 2026</option>
+                        <option value="A - No Junk Russia Primary">A - No Junk Russia Primary</option>
+                        <option value="B - No Junk Russia Alt">B - No Junk Russia Alt</option>
+                        <option value="C - With Junk Russia Primary">C - With Junk Russia Primary</option>
+                        <option value="D - With Junk Russia Alt">D - With Junk Russia Alt</option>
+                        <option value="E - Baseline No Junk">E - Baseline No Junk</option>
+                        <option value="F - Baseline With Junk">F - Baseline With Junk</option>
+                        <option value="G - Popular Russia Website with Junk">G - Popular Russia Website with Junk</option>
+                        <option value="None">None (Disabled)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Server Routing</label>
+                    <select id="serverRouting" class="modern-select">
+                        <option value="Auto">Auto</option>
+                        <option value="Regular" selected>Regular</option>
+                        <option value="Alternate">Alternate</option>
+                    </select>
+                </div>
+
+                <div class="form-group toggle-row">
+                    <label for="largeTls">Large TLS Padding</label>
+                    <label class="switch">
+                        <input type="checkbox" id="largeTls">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="form-group" id="sniContainer">
+                    <label>Custom SNI Domain</label>
+                    <input type="text" id="customSni" class="modern-input" value="soft98.ir" placeholder="e.g. soft98.ir">
+                    <small class="hint-text">Applies to Stealth and Wstunnel protocols only.</small>
+                </div>
             </div>
 
+            <!-- Network Settings -->
             <div class="form-group">
                 <label>Internal DNS</label>
-                <select id="internalDns">
-                    <option value="Google">Google</option>
+                <select id="internalDns" class="modern-select">
+                    <option value="Google">Google (8.8.8.8)</option>
                     <option value="OS Default">OS Default</option>
-                    <option value="OpenDNS">OpenDNS</option>
-                    <option value="Cloudflare">Cloudflare</option>
+                    <option value="Cloudflare">Cloudflare (1.1.1.1)</option>
                     <option value="Control D">Control D</option>
+                    <option value="OpenDNS">OpenDNS</option>
                 </select>
             </div>
-            
-            <div class="form-group toggle">
-                <label for="largeTls">Large TLS Padding</label>
-                <input type="checkbox" id="largeTls">
-            </div>
-
-            <div class="form-group toggle">
-                <label for="circumventCensorship">Circumvent Censorship</label>
-                <input type="checkbox" id="circumventCensorship" checked>
-            </div>
-
-            <hr/>
 
             <div class="form-group">
                 <label>Selection Mode</label>
-                <select id="selectionMode">
+                <select id="selectionMode" class="modern-select">
                     <option value="manual">Manual Select</option>
-                    <option value="all">All Locations</option>
                     <option value="smart">Smart (Data-Driven)</option>
-                    <option value="discovery">Discovery (Random)</option>
+                    <option value="discovery">Discovery (5 Random)</option>
                 </select>
             </div>
             
             <div class="form-group" id="locationsWrapper">
                 <label style="display:flex; justify-content:space-between; align-items:center;">
                     Locations 
-                    <div>
+                    <div style="display:flex; gap:4px;">
                         <button id="btnSelectAllLocs" class="small-btn">All</button> 
                         <button id="btnClearLocs" class="small-btn">Clear</button>
+                        <button id="btnRefreshLocs" class="small-btn" title="Refresh Locations from Online API">🔄</button>
                     </div>
                 </label>
-                <input type="text" id="locSearch" placeholder="Search locations..." style="width: 100%; margin-bottom: 5px; font-size: 0.8rem; padding: 6px;">
-                <!-- We will populate a hierarchical tree here -->
-                <div class="scroll-list" id="locationTree" style="padding: 5px;">
+                <input type="text" id="locSearch" class="modern-input search-box" placeholder="Search country, city, server...">
+                <div class="scroll-list" id="locationTree">
                     <div style="padding:10px; color:#888;">Loading locations...</div>
                 </div>
             </div>
@@ -80,47 +113,77 @@
                 <label>Protocols & Ports</label>
                 <div id="protocolPortsContainer"></div>
             </div>
-
-            <hr/>
             
             <div class="form-group">
                 <label>Timeouts (sec)</label>
                 <div style="display:flex; gap:10px;">
-                    <input type="number" id="connTimeout" value="25" placeholder="Conn" style="width:50%;">
-                    <input type="number" id="speedWait" value="5" placeholder="Wait" style="width:50%;">
+                    <div style="flex:1;">
+                        <span class="sub-label">Connect</span>
+                        <input type="number" id="connTimeout" class="modern-input" value="25" min="5" max="120">
+                    </div>
+                    <div style="flex:1;">
+                        <span class="sub-label">Wait Speed</span>
+                        <input type="number" id="speedWait" class="modern-input" value="3" min="1" max="30">
+                    </div>
                 </div>
             </div>
 
-            <button class="btn primary" id="btnStart">START ANALYZING</button>
-            <button class="btn danger" id="btnStop" disabled>STOP</button>
+            <div class="btn-group">
+                <button class="btn primary" id="btnStart">START ANALYZING</button>
+                <button class="btn danger" id="btnStop" disabled>STOP</button>
+            </div>
         </div>
 
         <!-- Main Dashboard -->
         <div class="main-content">
+            <div class="dashboard-header">
+                <div class="status-summary">
+                    <span id="activeTestingLocation">Idle</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn excel-btn" id="btnExportExcel">
+                        📊 Export Excel (.xlsx)
+                    </button>
+                </div>
+            </div>
+
             <div class="dashboard-grid">
                 <div class="card stat-card ping">
-                    <h3>PING</h3>
+                    <div class="card-icon">⚡</div>
+                    <h3>PING / JITTER</h3>
                     <div class="value" id="valPing">--</div>
                 </div>
                 <div class="card stat-card down">
+                    <div class="card-icon">⬇️</div>
                     <h3>DOWNLOAD</h3>
                     <div class="value" id="valDown">--</div>
                 </div>
                 <div class="card stat-card up">
+                    <div class="card-icon">⬆️</div>
                     <h3>UPLOAD</h3>
                     <div class="value" id="valUp">--</div>
                 </div>
                 <div class="card stat-card info">
+                    <div class="card-icon">📡</div>
                     <h3>STATUS</h3>
-                    <div class="value" id="valStatus" style="font-size: 1.5rem; white-space: nowrap;">Idle</div>
+                    <div class="value" id="valStatus">Idle</div>
                 </div>
             </div>
 
             <div class="card log-card">
-                <h3>Live Console</h3>
+                <div class="log-header">
+                    <h3>Live Console</h3>
+                    <button class="small-btn" id="btnClearLogs">Clear Log</button>
+                </div>
                 <div class="log-container" id="logConsole"></div>
             </div>
         </div>
+    </div>
+
+    <!-- Excel Export Modal / Toast -->
+    <div id="excelToast" class="excel-toast" style="display:none;">
+        <span id="excelToastMsg">Excel report ready!</span>
+        <button id="btnOpenExcel" class="small-btn glow-btn">Open File</button>
     </div>
 
     <script src="./src/main.js" type="module"></script>
