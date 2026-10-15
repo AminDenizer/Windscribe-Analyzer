@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Windscribe Ultra Analyzer</title>
+    <link rel="stylesheet" href="./src/style.css"/>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Settings -->
+        <div class="sidebar">
+            <h2><span class="glow">W</span>indscribe <span class="glow">A</span>nalyzer</h2>
+            
+            <div class="form-group">
+                <label>Amnezia Mode</label>
+                <select id="amneziaMode">
+                    <option value="I - Iran Legacy">I - Iran Legacy</option>
+                    <option value="A - No Junk Russia Primary">A - No Junk Russia Primary</option>
+                    <option value="B - No Junk Russia Alt">B - No Junk Russia Alt</option>
+                    <option value="C - With Junk Russia Primary">C - With Junk Russia Primary</option>
+                    <option value="D - With Junk Russia Alt">D - With Junk Russia Alt</option>
+                    <option value="E - Baseline No Junk">E - Baseline No Junk</option>
+                    <option value="F - Baseline With Junk">F - Baseline With Junk</option>
+                    <option value="G - Popular Website with Junk">G - Popular Website with Junk</option>
+                    <option value="H - Iran 26 May 2026">H - Iran 26 May 2026</option>
+                    <option value="None">None</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Internal DNS</label>
+                <select id="internalDns">
+                    <option value="Google">Google</option>
+                    <option value="OS Default">OS Default</option>
+                    <option value="OpenDNS">OpenDNS</option>
+                    <option value="Cloudflare">Cloudflare</option>
+                    <option value="Control D">Control D</option>
+                </select>
+            </div>
+            
+            <div class="form-group toggle">
+                <label for="largeTls">Large TLS Padding</label>
+                <input type="checkbox" id="largeTls">
+            </div>
+
+            <div class="form-group toggle">
+                <label for="circumventCensorship">Circumvent Censorship</label>
+                <input type="checkbox" id="circumventCensorship" checked>
+            </div>
+
+            <hr/>
+
+            <div class="form-group">
+                <label>Selection Mode</label>
+                <select id="selectionMode">
+                    <option value="manual">Manual Select</option>
+                    <option value="all">All Locations</option>
+                    <option value="smart">Smart (Data-Driven)</option>
+                    <option value="discovery">Discovery (Random)</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="locationsWrapper">
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                    Locations 
+                    <div>
+                        <button id="btnSelectAllLocs" class="small-btn">All</button> 
+                        <button id="btnClearLocs" class="small-btn">Clear</button>
+                    </div>
+                </label>
+                <input type="text" id="locSearch" placeholder="Search locations..." style="width: 100%; margin-bottom: 5px; font-size: 0.8rem; padding: 6px;">
+                <!-- We will populate a hierarchical tree here -->
+                <div class="scroll-list" id="locationTree" style="padding: 5px;">
+                    <div style="padding:10px; color:#888;">Loading locations...</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Protocols & Ports</label>
+                <div id="protocolPortsContainer"></div>
+            </div>
+
+            <hr/>
+            
+            <div class="form-group">
+                <label>Timeouts (sec)</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="connTimeout" value="25" placeholder="Conn" style="width:50%;">
+                    <input type="number" id="speedWait" value="5" placeholder="Wait" style="width:50%;">
+                </div>
+            </div>
+
+            <button class="btn primary" id="btnStart">START ANALYZING</button>
+            <button class="btn danger" id="btnStop" disabled>STOP</button>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="main-content">
+            <div class="dashboard-grid">
+                <div class="card stat-card ping">
+                    <h3>PING</h3>
+                    <div class="value" id="valPing">--</div>
+                </div>
+                <div class="card stat-card down">
+                    <h3>DOWNLOAD</h3>
+                    <div class="value" id="valDown">--</div>
+                </div>
+                <div class="card stat-card up">
+                    <h3>UPLOAD</h3>
+                    <div class="value" id="valUp">--</div>
+                </div>
+                <div class="card stat-card info">
+                    <h3>STATUS</h3>
+                    <div class="value" id="valStatus" style="font-size: 1.5rem; white-space: nowrap;">Idle</div>
+                </div>
+            </div>
+
+            <div class="card log-card">
+                <h3>Live Console</h3>
+                <div class="log-container" id="logConsole"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./src/main.js" type="module"></script>
+</body>
+</html>

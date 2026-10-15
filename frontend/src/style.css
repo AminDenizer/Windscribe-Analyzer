@@ -1,0 +1,287 @@
+:root {
+    --bg-main: #0d1117;
+    --bg-card: #161b22;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --success: #238636;
+    --danger: #da3633;
+    --glow: 0 0 15px rgba(88, 166, 255, 0.4);
+    --border: #30363d;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 320px;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+}
+
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+
+h2 {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.glow {
+    color: var(--accent);
+    text-shadow: var(--glow);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+input[type="text"], input[type="number"], select {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 8px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: 0.2s;
+}
+
+input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 5px 0;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.checkbox-grid label {
+    text-transform: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.btn {
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 5px;
+}
+
+.btn.primary {
+    background: var(--accent);
+    color: #fff;
+}
+.btn.primary:hover {
+    background: #478cde;
+    box-shadow: var(--glow);
+}
+
+.btn.danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+.btn.danger:hover:not(:disabled) {
+    background: rgba(218, 54, 51, 0.1);
+}
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.main-content {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.stat-card {
+    text-align: center;
+}
+
+.stat-card h3 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.value {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.ping .value { color: var(--success); }
+.down .value { color: #3b8ed0; }
+.up .value { color: #a45ee5; }
+.info .value { color: var(--text-main); font-size: 1.2rem; margin-top: 15px;}
+
+.log-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.log-card h3 {
+    margin-bottom: 15px;
+}
+
+.log-container {
+    flex: 1;
+    background: #090b0f;
+    border-radius: 6px;
+    padding: 15px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.log-msg { color: var(--text-main); }
+.log-success { color: var(--success); }
+.log-error { color: var(--danger); }
+.log-info { color: var(--accent); }
+
+.scroll-list {
+    background: #090b0f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.scroll-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--text-main);
+    text-transform: none;
+}
+.scroll-list label:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.small-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+.small-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-main);
+}
+
+.protocol-box {
+    background: #090b0f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 8px;
+}
+
+.protocol-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    color: var(--text-main);
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.ports-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding-left: 20px;
+}
+
+
+/* Tree-View Styles */
+.tree-continent { margin-bottom: 5px; }
+.tree-continent-header { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 5px; background: rgba(255,255,255,0.02); border-radius: 4px; font-weight: bold; }
+.tree-continent-header:hover { background: rgba(255,255,255,0.05); }
+.tree-countries { margin-left: 15px; display: none; padding-top: 5px; border-left: 1px solid var(--border); }
+.tree-country { margin-bottom: 3px; }
+.tree-country-header { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 3px 5px; color: var(--text-main); font-size: 0.9rem; }
+.tree-country-header:hover { background: rgba(255,255,255,0.03); border-radius: 4px; }
+.tree-locations { margin-left: 20px; display: none; padding-top: 3px; }
+.tree-location { display: flex; align-items: center; gap: 5px; padding: 2px 5px; font-size: 0.85rem; color: var(--text-muted); }
+.tree-location:hover { background: rgba(255,255,255,0.02); border-radius: 4px; color: var(--text-main); }
+.tree-icon { display: inline-block; width: 12px; font-size: 0.7rem; color: var(--accent); transition: transform 0.2s; }
+.tree-icon.open { transform: rotate(90deg); }
+
