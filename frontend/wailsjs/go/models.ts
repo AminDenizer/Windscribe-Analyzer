@@ -1,5 +1,19 @@
 export namespace main {
 	
+	export class AmneziaConfigItem {
+	    id: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AmneziaConfigItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	    }
+	}
 	export class LocationData {
 	    location: string;
 	    city: string;
@@ -21,9 +35,12 @@ export namespace main {
 	    }
 	}
 	export class TestConfig {
-	    locations: string[];
+	    selectedLocations: LocationData[];
 	    protocolPorts: Record<string, Array<number>>;
-	    circumventCensorship: boolean;
+	    protocolTweaks: boolean;
+	    amneziaConfig: string;
+	    serverRouting: string;
+	    customSni: string;
 	    largeTls: boolean;
 	    internalDns: string;
 	    selectionMode: string;
@@ -39,9 +56,12 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.locations = source["locations"];
+	        this.selectedLocations = this.convertValues(source["selectedLocations"], LocationData);
 	        this.protocolPorts = source["protocolPorts"];
-	        this.circumventCensorship = source["circumventCensorship"];
+	        this.protocolTweaks = source["protocolTweaks"];
+	        this.amneziaConfig = source["amneziaConfig"];
+	        this.serverRouting = source["serverRouting"];
+	        this.customSni = source["customSni"];
 	        this.largeTls = source["largeTls"];
 	        this.internalDns = source["internalDns"];
 	        this.selectionMode = source["selectionMode"];
@@ -51,24 +71,47 @@ export namespace main {
 	        this.speedWait = source["speedWait"];
 	        this.timeout = source["timeout"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class TestResult {
-	    ID: number;
-	    Location: string;
-	    City: string;
-	    Country: string;
-	    Protocol: string;
-	    Port: number;
-	    Status: string;
-	    Duration: number;
-	    Ping: number;
-	    Download: number;
-	    Upload: number;
-	    ProfileName: string;
-	    AntiCensorshipMode: string;
-	    LargeTLS: boolean;
-	    InternalDNS: string;
-	    Timestamp: string;
+	    id: number;
+	    location: string;
+	    city: string;
+	    country: string;
+	    continent: string;
+	    protocol: string;
+	    port: number;
+	    status: string;
+	    duration: number;
+	    ping: number;
+	    jitter: number;
+	    download: number;
+	    upload: number;
+	    profileName: string;
+	    protocolTweaks: boolean;
+	    antiCensorshipMode: string;
+	    serverRouting: string;
+	    customSni: string;
+	    largeTls: boolean;
+	    internalDns: string;
+	    timestamp: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new TestResult(source);
@@ -76,22 +119,27 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ID = source["ID"];
-	        this.Location = source["Location"];
-	        this.City = source["City"];
-	        this.Country = source["Country"];
-	        this.Protocol = source["Protocol"];
-	        this.Port = source["Port"];
-	        this.Status = source["Status"];
-	        this.Duration = source["Duration"];
-	        this.Ping = source["Ping"];
-	        this.Download = source["Download"];
-	        this.Upload = source["Upload"];
-	        this.ProfileName = source["ProfileName"];
-	        this.AntiCensorshipMode = source["AntiCensorshipMode"];
-	        this.LargeTLS = source["LargeTLS"];
-	        this.InternalDNS = source["InternalDNS"];
-	        this.Timestamp = source["Timestamp"];
+	        this.id = source["id"];
+	        this.location = source["location"];
+	        this.city = source["city"];
+	        this.country = source["country"];
+	        this.continent = source["continent"];
+	        this.protocol = source["protocol"];
+	        this.port = source["port"];
+	        this.status = source["status"];
+	        this.duration = source["duration"];
+	        this.ping = source["ping"];
+	        this.jitter = source["jitter"];
+	        this.download = source["download"];
+	        this.upload = source["upload"];
+	        this.profileName = source["profileName"];
+	        this.protocolTweaks = source["protocolTweaks"];
+	        this.antiCensorshipMode = source["antiCensorshipMode"];
+	        this.serverRouting = source["serverRouting"];
+	        this.customSni = source["customSni"];
+	        this.largeTls = source["largeTls"];
+	        this.internalDns = source["internalDns"];
+	        this.timestamp = source["timestamp"];
 	    }
 	}
 
