@@ -1,19 +1,202 @@
-# README
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.24+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Version" />
+  <img src="https://img.shields.io/badge/Framework-Wails_v2-DF0000?style=for-the-badge&logo=wails&logoColor=white" alt="Wails v2" />
+  <img src="https://img.shields.io/badge/Frontend-Vite_%2B_JS-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite + Vanilla JS" />
+  <img src="https://img.shields.io/badge/Database-SQLite3-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite3" />
+  <img src="https://img.shields.io/badge/Reports-Excelize_v2-217346?style=for-the-badge&logo=microsoftexcel&logoColor=white" alt="Excelize" />
+  <img src="https://img.shields.io/badge/Platform-Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x64" />
+  <img src="https://img.shields.io/badge/License-MIT-2ea043?style=for-the-badge" alt="License" />
+</p>
 
-## About
+<h1 align="center">🌐 Windscribe Ultra Analyzer Pro</h1>
 
-This is the official Wails Vanilla template.
+<p align="center">
+  <b>Enterprise-Grade Automated Testing, Anti-Censorship Diagnostics & Quality Auditing Suite for Windscribe VPN</b>
+</p>
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+<p align="center">
+  Windscribe Ultra Analyzer Pro is a high-performance desktop application designed to systematically benchmark, diagnose, and audit Windscribe VPN server nodes across restrictive networks and Deep Packet Inspection (DPI) environments. Built with <b>Go</b> and <b>Wails v2</b>, it orchestrates the native Windscribe CLI to evaluate protocol resilience, capture live telemetry (Ping, Jitter, Download, Upload), and automatically generate professional, color-coded Excel audit sheets.
+</p>
 
-## Live Development
+---
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+## 🏗️ Architecture
 
-## Building
+```mermaid
+flowchart TD
+    subgraph Frontend["Desktop GUI (Vite + Vanilla JS)"]
+        UI["Live Telemetry Dashboard<br/>(Ping • Jitter • Download • Upload)"]
+        LocTree["Hierarchical Server Tree<br/>(Continent / Country / City)"]
+        ProtoMatrix["Master Protocol & Port Selector"]
+        AntiCensorship["Anti-Censorship & Amnezia Controls"]
+    end
 
-To build a redistributable, production mode package, use `wails build`.
+    subgraph Backend["Go Core Engine (Wails v2 IPC)"]
+        Orchestrator["Test Orchestrator<br/>(Queue & Stateful Resume)"]
+        CLIWorker["Windscribe CLI Worker<br/>(Process Driver & Auto Disconnect)"]
+        Telemetry["Telemetry & Speed Engine<br/>(speedtest-go)"]
+        ExcelReporter["Automated Excelize Reporter<br/>(Color-Coded Health Matrix)"]
+    end
+
+    subgraph Storage["Storage & Artifacts"]
+        DB[("SQLite Database<br/>windscribe_ultra.db")]
+        ExcelFile["Excel Audit Workbooks<br/>reports/*.xlsx"]
+    end
+
+    Frontend <-->|"Bidirectional Events"| Backend
+    Orchestrator --> CLIWorker
+    Orchestrator --> Telemetry
+    Orchestrator --> DB
+    Orchestrator --> ExcelReporter
+    ExcelReporter --> ExcelFile
+```
+
+---
+
+## ✨ Features
+
+- **Multi-Location Tree Hierarchy & Online Sync**:
+  - Interactive global tree organizing hundreds of server nodes by **Continent → Country / Region → Server Location**.
+  - Real-time fuzzy searching across continents, countries, cities, and server aliases with auto-expansion.
+  - Cascading multi-select controls with parent indeterminate state support.
+  - Live online sync directly from official Windscribe APIs with automatic fallback to local snapshots.
+  - Selection Modes: `Manual Select`, `Smart (Data-Driven)`, and `Discovery` (5 random servers).
+
+- **Exhaustive Multi-Protocol & Port Scanning**:
+  - Full matrix scanning covering:
+    - **WireGuard**: `443`, `80`, `53`, `123`, `1194`, `65142`
+    - **OpenVPN UDP**: `443`, `80`, `53`, `123`, `1194`, `54783`
+    - **OpenVPN TCP**: `443`, `587`, `21`, `22`, `80`, `123`, `143`, `3306`, `8080`, `54783`, `1194`
+    - **Stealth (Stunnel)**: `443`, `587`, `21`, `22`, `80`, `123`, `143`, `3306`, `8080`, `54783`, `8443`
+    - **WStunnel (WebSocket)**: `443`
+    - **IKEv2**: `500`
+  - Unified master selector with live count badge (`X Protos, Y Ports`).
+
+- **Anti-Censorship & Amnezia Integration**:
+  - Native integration with Amnezia junk-packet presets:
+    `J - Iran Junk Packets`, `I - UAE and Iran Legacy`, `H - Iran 26 May 2026`, `A - No Junk Russia Primary`, `B - No Junk Russia Alt`, `C - With Junk Russia Primary`, `D - With Junk Russia Alt`, `E - Baseline No Junk`, `F - Baseline With Junk`, `G - Popular Russia Website with Junk`.
+  - Configurable **Server Routing**: `Auto`, `Regular`, and `Alternate`.
+  - **Large TLS Padding**: Masks TLS handshake packet size signatures against statistical classifiers.
+  - **Custom SNI Domain Fronting**: Injects custom SNI for Stealth and WStunnel (default: `example.com`), automatically enabled when any stealth or wstunnel port is selected.
+
+- **ISP & Operator Benchmark Tagging**:
+  - Tag test batches by network provider to analyze operator-specific DPI throttling:
+    `MCI`, `Irancell`, `Rightel`, `Mokhaberat (TCI)`, `Shatel`, `Asiatech`, `Mobinnet`, `Zitel`, `HiWeb`, `Pars Online`, `Pishgaman`, `Fanava`, `Other / Direct`.
+  - Selected ISP is stamped across historical database records and included in Column C of Excel audit files.
+
+- **Live Telemetry & Dashboard**:
+  - Decoupled modern stat cards with dedicated color-coded badges:
+    - **⚡ PING / JITTER**: Millisecond-accurate RTT and jitter latency.
+    - **⬇️ DOWNLOAD**: Multi-stream bandwidth in Mbps.
+    - **⬆️ UPLOAD**: Transfer rate in Mbps.
+    - **📡 STATUS**: Live phase tracking (`Connecting`, `Testing Ping...`, `Testing Speed...`, `Disconnecting`, `Done`, `Idle`).
+  - Real-time console log with timestamps, log levels, and auto-scroll control.
+
+- **Automated Color-Coded Excel Quality Reports**:
+  - Generates `.xlsx` audit workbooks upon test completion or user pause.
+  - **Traffic Light Grading**:
+    - 🟢 **Green (Healthy)**: Fast throughput (> 10 Mbps) and low latency (< 150 ms).
+    - 🟡 **Yellow (Suboptimal)**: Connected with throttled speed or high jitter.
+    - 🔴 **Red (Failed / Blocked)**: Connection timeout, dropped handshake, or zero throughput.
+  - Floating toast notification with direct `Open File` action and top header shortcut button.
+
+- **Stateful Session Pause & Resume**:
+  - Clicking **STOP** immediately halts testing, disconnects Windscribe, and saves all completed results.
+  - Retains queue progress and shows remaining count (`CONTINUE TEST (N LEFT)`) to resume anytime.
+
+- **Embedded SQLite Storage**:
+  - Automatically maintains `windscribe_ultra.db` with schema migrations and legacy data sanitization.
+
+---
+
+## 💻 System Requirements
+
+- **Operating System**: Windows 10 / 11 (64-bit)
+- **Windscribe Client**: Windscribe Desktop v2.4+ installed (`windscribe-cli.exe` is utilized)
+- **Runtime**: Microsoft Edge WebView2 Runtime (preinstalled on Windows 10/11)
+
+---
+
+## 🚀 Installation & Quick Start
+
+1. Download **`windscribe-ultra-tester.exe`** from the [Releases](../../releases/latest) section.
+2. Ensure the official **Windscribe desktop application** is installed on your Windows PC.
+3. Launch `windscribe-ultra-tester.exe` directly (portable, no installation required).
+
+---
+
+## 📖 Usage Workflow
+
+1. **Select Network ISP**: Choose your current internet provider from the `Network ISP / Operator` menu.
+2. **Configure Anti-Censorship**:
+   - Enable **Protocol Tweaks**.
+   - Select an **Amnezia Config** preset (e.g. `J - Iran Junk Packets`).
+   - Select **Server Routing** (`Regular`, `Auto`, or `Alternate`).
+   - Optionally toggle **Large TLS Padding**.
+   - If testing Stealth or WStunnel, customize the **Custom SNI Domain** (default: `example.com`).
+3. **Select Protocols & Ports**:
+   - Use the master checkbox to select all or pick specific protocols and ports.
+4. **Choose Server Locations**:
+   - Search countries or cities, click `All`, or check individual servers in the tree.
+5. **Configure Timeouts**:
+   - **Connect Timeout**: Maximum seconds to wait for connection (default: `25s`).
+   - **Wait Speed**: Settling delay before speedtest starts (default: `3s`).
+6. **Start Testing**:
+   - Click **START ANALYZING**.
+   - Monitor live ping, jitter, download, and upload speeds.
+   - Click **STOP** to pause; click **CONTINUE TEST** to resume.
+7. **View Results**:
+   - Open the automatically generated Excel file from the floating toast or top header button.
+
+---
+
+## 📊 Excel Report Structure
+
+Exported workbooks in `reports/` contain full session audit details:
+- **Columns**: Timestamp, Country, ISP / Operator, Location, Protocol, Port, SNI Domain, Amnezia Config, Server Routing, Large TLS, Connect Time (s), Ping (ms), Jitter (ms), Download (Mbps), Upload (Mbps), Status.
+- **Conditional Highlighting**: Color-coded rows (Green, Yellow, Red) based on latency and throughput thresholds.
+
+---
+
+## 🛠️ Building from Source
+
+### Prerequisites
+- **Go** 1.24+ ([Download Go](https://go.dev/dl/))
+- **Node.js** 20+ & **npm** ([Download Node.js](https://nodejs.org/))
+- **Wails CLI v2**:
+  ```powershell
+  go install github.com/wailsapp/wails/v2/cmd/wails@latest
+  ```
+
+### Build Steps
+```powershell
+# Clone the repository
+git clone https://github.com/your-username/windscribe-ultra-analyzer.git
+cd windscribe-ultra-analyzer
+
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+
+# Build production executable for Windows x64
+wails build -platform windows/amd64
+```
+Output binary: `build/bin/windscribe-ultra-tester.exe`
+
+---
+
+## ❓ FAQ
+
+- **How does the tool communicate with Windscribe?**  
+  It controls the native `windscribe-cli.exe` binary directly via non-blocking background worker processes.
+- **Why is Custom SNI enabled only for Stealth and WStunnel?**  
+  SNI domain fronting is an obfuscation feature specific to TLS-wrapped protocols (Stealth and WStunnel).
+- **Does it require administrative privileges?**  
+  Standard user privileges are sufficient. If your Windows TAP/Wintun adapter requires elevation, run as Administrator.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
