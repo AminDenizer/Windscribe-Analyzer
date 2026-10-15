@@ -1,0 +1,76 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build Windows x64 Binary & Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Standalone Windows Executable
+        run: wails build -platform windows/amd64
+
+      - name: Generate SHA-256 Checksum
+        shell: pwsh
+        run: |
+          Get-FileHash -Algorithm SHA256 build/bin/windscribe-ultra-tester.exe | Format-Table -AutoSize | Out-File -Encoding utf8 build/bin/checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Windscribe Ultra Analyzer ${{ github.ref_name }}
+          files: |
+            build/bin/windscribe-ultra-tester.exe
+            build/bin/checksums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## 🚀 Windscribe Ultra Analyzer Pro (${{ github.ref_name }})
+
+            ### 🌟 Key Features & Enhancements
+            - **Multi-Location Testing**: Comprehensive testing across global Windscribe server nodes categorized by Continent, Country, and Location with real-time keyword search.
+            - **Multi-Protocol & Port Scanning**: Native benchmarking across WireGuard, UDP, TCP, Stealth, WStunnel, and IKEv2 on all censorship-evasion ports.
+            - **Anti-Censorship & Amnezia Integration**: Full support for Amnezia junk packets (Iran, UAE, Russia profiles), server routing (Auto/Regular/Alternate), large TLS padding, and domain fronting via Custom SNI.
+            - **ISP & Operator Benchmark Tagging**: Select and isolate network performance across Iranian and global providers (`MCI`, `Irancell`, `Rightel`, `Mokhaberat (TCI)`, `Shatel`, `Asiatech`, `Mobinnet`, `Zitel`, `HiWeb`, etc.).
+            - **Real-Time Live Telemetry**: Dynamic live dashboard streaming Ping, Jitter, Download, and Upload speeds before transitioning to the next target.
+            - **Automated Color-Coded Excel Quality Reports**: Auto-exports formatted `.xlsx` matrices after every test session (Green: Healthy, Yellow: Moderate, Red: Unusable).
+            - **Stateful Pause & Resume**: Stop at any time with immediate CLI disconnection, and resume remaining queue anytime.
+            - **Zero-Dependency Portable Binary**: Packaged as a single Windows executable powered by Go, Wails v2, and WebView2.
+
+            ### 📥 Installation & Run
+            1. Download **`windscribe-ultra-tester.exe`** from the Assets below.
+            2. Make sure the official **Windscribe desktop application** is installed on your Windows system.
+            3. Run `windscribe-ultra-tester.exe` directly (portable, no installation required).
