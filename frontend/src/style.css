@@ -509,12 +509,159 @@ input:checked + .slider:before {
 }
 .tree-icon.open { transform: rotate(90deg); }
 
-/* Custom Checkbox Design */
+/* Custom Modern Checkbox Design */
 input[type="checkbox"] {
-    accent-color: var(--accent);
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #30363d;
+    border-radius: 4px;
+    background-color: #0d1117;
     cursor: pointer;
-    width: 14px;
-    height: 14px;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    transition: all 0.15s ease-in-out;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+input[type="checkbox"]:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 8px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    top: 1.5px;
+    left: 4.5px;
+}
+
+input[type="checkbox"]:indeterminate {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+input[type="checkbox"]:indeterminate::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 2px;
+    background-color: #ffffff;
+    border-radius: 1px;
+    top: 6px;
+    left: 3px;
+}
+
+/* Remove native number spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Modern Number Stepper Box */
+.stepper-box {
+    display: flex;
+    align-items: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.stepper-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.stepper-input {
+    border: none !important;
+    box-shadow: none !important;
+    text-align: center;
+    padding: 7px 4px !important;
+    background: transparent !important;
+    font-weight: 600;
+    width: 100%;
+    color: var(--text-main);
+}
+
+.step-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    font-weight: 700;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.step-btn:hover {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.step-btn:active {
+    transform: scale(0.92);
+}
+
+/* Custom Modern Scrollbars (Removes Windows 95 arrow buttons completely) */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #252b36;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 /* Excel Toast */

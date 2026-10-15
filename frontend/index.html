@@ -119,11 +119,19 @@
                 <div style="display:flex; gap:10px;">
                     <div style="flex:1;">
                         <span class="sub-label">Connect</span>
-                        <input type="number" id="connTimeout" class="modern-input" value="25" min="5" max="120">
+                        <div class="stepper-box">
+                            <button type="button" class="step-btn" data-step="down" data-target="connTimeout">−</button>
+                            <input type="number" id="connTimeout" class="modern-input stepper-input" value="25" min="5" max="120">
+                            <button type="button" class="step-btn" data-step="up" data-target="connTimeout">+</button>
+                        </div>
                     </div>
                     <div style="flex:1;">
                         <span class="sub-label">Wait Speed</span>
-                        <input type="number" id="speedWait" class="modern-input" value="3" min="1" max="30">
+                        <div class="stepper-box">
+                            <button type="button" class="step-btn" data-step="down" data-target="speedWait">−</button>
+                            <input type="number" id="speedWait" class="modern-input stepper-input" value="3" min="1" max="30">
+                            <button type="button" class="step-btn" data-step="up" data-target="speedWait">+</button>
+                        </div>
                     </div>
                 </div>
             </div>

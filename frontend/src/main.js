@@ -523,4 +523,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         });
     }
+
+    // Number Stepper Handlers
+    document.querySelectorAll(".step-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetId = btn.dataset.target;
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            let val = parseInt(input.value) || 0;
+            const step = btn.dataset.step === "up" ? 1 : -1;
+            const min = input.hasAttribute("min") ? parseInt(input.getAttribute("min")) : 1;
+            const max = input.hasAttribute("max") ? parseInt(input.getAttribute("max")) : 999;
+            val = Math.max(min, Math.min(max, val + step));
+            input.value = val;
+        });
+    });
 });
