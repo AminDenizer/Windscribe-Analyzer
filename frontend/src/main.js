@@ -31,12 +31,93 @@ function logMsg(msg, type = "log-msg") {
 
 function updateSniFieldState() {
     const customSni = document.getElementById("customSni");
-    const stealthCb = document.querySelector(`.cb-proto[value="stealth"]`);
-    const wstunnelCb = document.querySelector(`.cb-proto[value="wstunnel"]`);
+    if (!customSni) return;
+
+    const stealthProto = document.querySelector(`.cb-proto[value="stealth"]`);
+    const wstunnelProto = document.querySelector(`.cb-proto[value="wstunnel"]`);
+
+    const hasStealthPort = document.querySelectorAll('.cb-port-stealth:checked').length > 0;
+    const hasWstunnelPort = document.querySelectorAll('.cb-port-wstunnel:checked').length > 0;
+
+    const isSupported = (stealthProto && stealthProto.checked) ||
+                        (wstunnelProto && wstunnelProto.checked) ||
+                        hasStealthPort ||
+                        hasWstunnelPort;
+
+    customSni.disabled = !isSupported;
+}
+
+function updateTweaksState() {
+    const tweaksCb = document.getElementById("protocolTweaks");
+    const amneziaSelect = document.getElementById("amneziaConfig");
+    const serverRoutingSelect = document.getElementById("serverRouting");
+    const btnRefresh = document.getElementById("btnRefreshAmnezia");
     
-    const isSupported = (stealthCb && stealthCb.checked) || (wstunnelCb && wstunnelCb.checked);
-    if (customSni) {
-        customSni.disabled = !isSupported;
+    const enabled = tweaksCb ? tweaksCb.checked : true;
+    if (amneziaSelect) amneziaSelect.disabled = !enabled;
+    if (serverRoutingSelect) serverRoutingSelect.disabled = !enabled;
+    if (btnRefresh) btnRefresh.disabled = !enabled;
+}
+
+let toastTimeout = null;
+
+function showExcelToast(filePath) {
+    const toast = document.getElementById("excelToast");
+    const desc = document.getElementById("excelToastMsg");
+    if (!toast) return;
+
+    if (toastTimeout) {
+        clearTimeout(toastTimeout);
+        toastTimeout = null;
+    }
+
+    const fileName = filePath ? filePath.split(/[\/\\]/).pop() : "Report saved";
+    if (desc) desc.innerText = fileName;
+
+    toast.classList.remove("toast-hiding");
+    toast.style.display = "flex";
+
+    // Auto-dismiss after 6 seconds
+    toastTimeout = setTimeout(() => {
+        hideExcelToast();
+    }, 6000);
+}
+
+function hideExcelToast() {
+    const toast = document.getElementById("excelToast");
+    if (!toast) return;
+    toast.classList.add("toast-hiding");
+    setTimeout(() => {
+        toast.style.display = "none";
+        toast.classList.remove("toast-hiding");
+    }, 250);
+}
+
+function updateProtocolsSummary() {
+    const activeProtos = Object.keys(VALID_PROTOCOLS).filter(proto => {
+        return document.querySelectorAll(`.cb-port-${proto}:checked`).length > 0;
+    });
+    const allPorts = document.querySelectorAll('[class*="cb-port-"]');
+    const checkedPorts = document.querySelectorAll('[class*="cb-port-"]:checked');
+    
+    const masterCb = document.getElementById("cbSelectAllProtocols");
+    const badge = document.getElementById("protocolsCountBadge");
+
+    if (badge) {
+        badge.innerText = `${activeProtos.length} Protos, ${checkedPorts.length} Ports`;
+    }
+
+    if (masterCb) {
+        if (checkedPorts.length === allPorts.length && allPorts.length > 0) {
+            masterCb.checked = true;
+            masterCb.indeterminate = false;
+        } else if (checkedPorts.length > 0) {
+            masterCb.checked = false;
+            masterCb.indeterminate = true;
+        } else {
+            masterCb.checked = false;
+            masterCb.indeterminate = false;
+        }
     }
 }
 
@@ -74,10 +155,23 @@ function initProtocols() {
             lbl.appendChild(cbPort);
             lbl.appendChild(document.createTextNode(" " + port));
             grid.appendChild(lbl);
+
+            cbPort.addEventListener("change", () => {
+                const totalPorts = grid.querySelectorAll(`.cb-port-${proto}`).length;
+                const activePorts = grid.querySelectorAll(`.cb-port-${proto}:checked`).length;
+                cbProto.checked = (activePorts === totalPorts);
+                cbProto.indeterminate = (activePorts > 0 && activePorts < totalPorts);
+                updateSniFieldState();
+                updateProtocolsSummary();
+            });
         });
 
-        cbProto.addEventListener("change", () => {
+        cbProto.addEventListener("change", (e) => {
+            const isChecked = e.target.checked;
+            grid.querySelectorAll(`.cb-port-${proto}`).forEach(p => p.checked = isChecked);
+            cbProto.indeterminate = false;
             updateSniFieldState();
+            updateProtocolsSummary();
         });
         
         box.appendChild(header);
@@ -85,7 +179,22 @@ function initProtocols() {
         container.appendChild(box);
     });
 
+    const masterCb = document.getElementById("cbSelectAllProtocols");
+    if (masterCb) {
+        masterCb.addEventListener("change", (e) => {
+            const isChecked = e.target.checked;
+            document.querySelectorAll(".cb-proto").forEach(p => {
+                p.checked = isChecked;
+                p.indeterminate = false;
+            });
+            document.querySelectorAll('[class*="cb-port-"]').forEach(p => p.checked = isChecked);
+            updateSniFieldState();
+            updateProtocolsSummary();
+        });
+    }
+
     updateSniFieldState();
+    updateProtocolsSummary();
 }
 
 async function loadAmneziaConfigs(forceOnline = false) {
@@ -280,21 +389,41 @@ async function fetchLocations(forceOnline = false) {
 
 document.addEventListener("DOMContentLoaded", async () => {
     initProtocols();
+    updateTweaksState();
+
+    const tweaksCb = document.getElementById("protocolTweaks");
+    if (tweaksCb) {
+        tweaksCb.addEventListener("change", updateTweaksState);
+    }
     
     setTimeout(() => {
         loadAmneziaConfigs();
         fetchLocations();
     }, 400);
 
-    // Refresh Buttons
+    // Refresh Buttons with rotation animation
     const btnRefreshLocs = document.getElementById("btnRefreshLocs");
     if (btnRefreshLocs) {
-        btnRefreshLocs.addEventListener("click", () => fetchLocations(true));
+        btnRefreshLocs.addEventListener("click", async () => {
+            btnRefreshLocs.classList.add("spinning");
+            try {
+                await fetchLocations(true);
+            } finally {
+                setTimeout(() => btnRefreshLocs.classList.remove("spinning"), 600);
+            }
+        });
     }
 
     const btnRefreshAmnezia = document.getElementById("btnRefreshAmnezia");
     if (btnRefreshAmnezia) {
-        btnRefreshAmnezia.addEventListener("click", () => loadAmneziaConfigs(true));
+        btnRefreshAmnezia.addEventListener("click", async () => {
+            btnRefreshAmnezia.classList.add("spinning");
+            try {
+                await loadAmneziaConfigs(true);
+            } finally {
+                setTimeout(() => btnRefreshAmnezia.classList.remove("spinning"), 600);
+            }
+        });
     }
 
     // Search Box Filter
@@ -401,6 +530,58 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    function collectTestConfig(isResume = false) {
+        const selectionMode = document.getElementById("selectionMode").value;
+        const selectedLocations = [];
+        
+        if (selectionMode === "manual" || selectionMode === "discovery") {
+            document.querySelectorAll(".cb-location:checked").forEach(cb => {
+                selectedLocations.push({
+                    location: cb.value,
+                    city: cb.dataset.city || "",
+                    region: cb.dataset.country || "",
+                    continent: cb.dataset.continent || "",
+                    display: `${cb.dataset.country} - ${cb.dataset.city} (${cb.value})`
+                });
+            });
+            if (!isResume && selectedLocations.length === 0) {
+                alert("Please select at least one location!");
+                return null;
+            }
+        }
+
+        const protocolPorts = {};
+        Object.keys(VALID_PROTOCOLS).forEach(proto => {
+            const ports = [];
+            document.querySelectorAll(`.cb-port-${proto}:checked`).forEach(pCb => ports.push(parseInt(pCb.value)));
+            if (ports.length > 0) protocolPorts[proto] = ports;
+        });
+
+        const ispElem = document.getElementById("networkIsp");
+        const ispVal = ispElem ? ispElem.value : "Default / Direct";
+
+        return {
+            selectedLocations: selectedLocations,
+            protocolPorts: protocolPorts,
+            protocolTweaks: document.getElementById("protocolTweaks").checked,
+            amneziaConfig: document.getElementById("amneziaConfig").value,
+            serverRouting: document.getElementById("serverRouting").value,
+            customSni: document.getElementById("customSni").value.trim(),
+            largeTls: document.getElementById("largeTls").checked,
+            internalDns: document.getElementById("internalDns").value,
+            isp: ispVal,
+            isResume: isResume,
+            selectionMode: selectionMode,
+            testPing: true,
+            testDownload: true,
+            testUpload: true,
+            timeout: parseInt(document.getElementById("connTimeout").value) || 25,
+            speedWait: parseInt(document.getElementById("speedWait").value) || 3
+        };
+    }
+
+    const btnContinue = document.getElementById("btnContinue");
+
     // Handle Live Events from Go Orchestrator
     window.runtime.EventsOn("test_update", (update) => {
         if (update.message) logMsg(update.message, "log-info");
@@ -420,97 +601,85 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Show Excel Ready toast if generated
         if (update.excelPath) {
             lastExcelPath = update.excelPath;
-            if (excelToast) {
-                document.getElementById("excelToastMsg").innerText = `Excel Report Saved: ${update.excelPath.split('\\').pop()}`;
-                excelToast.style.display = "flex";
+            showExcelToast(update.excelPath);
+            if (btnExportExcel) {
+                btnExportExcel.disabled = false;
+                btnExportExcel.title = `Click to open ${update.excelPath.split(/[\/\\]/).pop()}`;
             }
         }
 
-        if (update.status === "Done" || update.status === "Stopped") {
+        // Handle CanResume state
+        if (update.canResume) {
+            if (btnContinue) {
+                const remaining = update.totalCount - update.testedCount;
+                const remTxt = document.getElementById("remainingCountTxt");
+                if (remTxt) remTxt.innerText = remaining;
+                btnContinue.style.display = "flex";
+            }
+            btnStart.innerText = "START NEW TEST";
             btnStart.disabled = false;
             btnStop.disabled = true;
+        } else if (update.status === "Done") {
+            if (btnContinue) btnContinue.style.display = "none";
+            btnStart.innerText = "START ANALYZING";
+            btnStart.disabled = false;
+            btnStop.disabled = true;
+        } else if (update.status === "Stopped") {
+            btnStop.disabled = true;
+            btnStart.disabled = false;
         }
     });
 
-    // Start Button Handler
+    // Start Button Handler (Starts fresh)
     btnStart.addEventListener("click", () => {
-        const selectionMode = document.getElementById("selectionMode").value;
-        const selectedLocations = [];
-        
-        if (selectionMode === "manual" || selectionMode === "discovery") {
-            document.querySelectorAll(".cb-location:checked").forEach(cb => {
-                selectedLocations.push({
-                    location: cb.value,
-                    city: cb.dataset.city || "",
-                    region: cb.dataset.country || "",
-                    continent: cb.dataset.continent || "",
-                    display: `${cb.dataset.country} - ${cb.dataset.city} (${cb.value})`
-                });
-            });
-            if (selectedLocations.length === 0) {
-                alert("Please select at least one location!");
-                return;
-            }
-        }
-        
+        const config = collectTestConfig(false);
+        if (!config) return;
+
         btnStart.disabled = true;
+        btnStart.innerText = "TESTING IN PROGRESS...";
         btnStop.disabled = false;
+        if (btnContinue) btnContinue.style.display = "none";
+        if (btnExportExcel) btnExportExcel.disabled = true;
         document.getElementById("valPing").innerText = "--";
         document.getElementById("valDown").innerText = "--";
         document.getElementById("valUp").innerText = "--";
         document.getElementById("valStatus").innerText = "Starting...";
-        if (excelToast) excelToast.style.display = "none";
+        hideExcelToast();
         
-        logMsg("Starting Windscribe Analyzer...", "log-success");
-
-        const protocolPorts = {};
-        document.querySelectorAll(".cb-proto:checked").forEach(cb => {
-            const proto = cb.value;
-            const ports = [];
-            document.querySelectorAll(`.cb-port-${proto}:checked`).forEach(pCb => ports.push(parseInt(pCb.value)));
-            if (ports.length > 0) protocolPorts[proto] = ports;
-        });
-
-        const config = {
-            selectedLocations: selectedLocations,
-            protocolPorts: protocolPorts,
-            protocolTweaks: document.getElementById("protocolTweaks").checked,
-            amneziaConfig: document.getElementById("amneziaConfig").value,
-            serverRouting: document.getElementById("serverRouting").value,
-            customSni: document.getElementById("customSni").value.trim(),
-            largeTls: document.getElementById("largeTls").checked,
-            internalDns: document.getElementById("internalDns").value,
-            selectionMode: selectionMode,
-            testPing: true,
-            testDownload: true,
-            testUpload: true,
-            timeout: parseInt(document.getElementById("connTimeout").value) || 25,
-            speedWait: parseInt(document.getElementById("speedWait").value) || 3
-        };
-        
+        logMsg(`Starting Windscribe Analyzer [ISP: ${config.isp}]...`, "log-success");
         window.go.main.App.StartTest(config);
     });
 
+    // Continue Button Handler (Resumes remaining queue)
+    if (btnContinue) {
+        btnContinue.addEventListener("click", () => {
+            const config = collectTestConfig(true);
+            if (!config) return;
+
+            btnStart.disabled = true;
+            btnContinue.style.display = "none";
+            btnStop.disabled = false;
+            document.getElementById("valStatus").innerText = "Resuming...";
+            hideExcelToast();
+
+            logMsg("Resuming Windscribe Analyzer with remaining locations...", "log-info");
+            window.go.main.App.StartTest(config);
+        });
+    }
+
     // Stop Button Handler
     btnStop.addEventListener("click", () => {
-        logMsg("Requesting stop...", "log-error");
+        logMsg("Stopping test session and disconnecting Windscribe...", "log-error");
+        btnStop.disabled = true;
         window.go.main.App.StopTest();
     });
 
-    // Export Excel Button
+    // Open Excel Button in Header
     if (btnExportExcel) {
-        btnExportExcel.addEventListener("click", async () => {
-            try {
-                logMsg("Exporting results to Excel...", "log-info");
-                const path = await window.go.main.App.ExportExcelReport();
-                lastExcelPath = path;
-                logMsg(`Excel report exported to: ${path}`, "log-success");
-                if (excelToast) {
-                    document.getElementById("excelToastMsg").innerText = `Excel Report Saved!`;
-                    excelToast.style.display = "flex";
-                }
-            } catch (err) {
-                alert("Excel Export Error: " + err);
+        btnExportExcel.addEventListener("click", () => {
+            if (lastExcelPath) {
+                logMsg(`Opening Excel report: ${lastExcelPath.split(/[\/\\]/).pop()}`, "log-info");
+                window.go.main.App.OpenExcelFile(lastExcelPath);
             }
         });
     }
@@ -519,8 +688,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (btnOpenExcel) {
         btnOpenExcel.addEventListener("click", () => {
             if (lastExcelPath) {
+                logMsg(`Opening Excel report: ${lastExcelPath.split(/[\/\\]/).pop()}`, "log-info");
                 window.go.main.App.OpenExcelFile(lastExcelPath);
             }
+            hideExcelToast();
+        });
+    }
+
+    // Close button inside toast
+    const btnCloseToast = document.getElementById("btnCloseToast");
+    if (btnCloseToast) {
+        btnCloseToast.addEventListener("click", () => {
+            hideExcelToast();
         });
     }
 
