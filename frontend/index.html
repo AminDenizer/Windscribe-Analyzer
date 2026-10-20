@@ -18,24 +18,39 @@
             
             <!-- Scrollable Configuration Area -->
             <div class="sidebar-scroll-body">
-                <!-- Network ISP / Operator -->
+                <!-- Network Country & ISP / Operator -->
                 <div class="form-group">
-                    <label>Network ISP / Operator</label>
-                    <select id="networkIsp" class="modern-select">
-                        <option value="MCI" selected>MCI</option>
-                        <option value="Irancell">Irancell</option>
-                        <option value="Rightel">Rightel</option>
-                        <option value="Mokhaberat (TCI)">Mokhaberat (TCI)</option>
-                        <option value="Shatel">Shatel</option>
-                        <option value="Asiatech">Asiatech</option>
-                        <option value="Mobinnet">Mobinnet</option>
-                        <option value="Zitel">Zitel</option>
-                        <option value="HiWeb">HiWeb</option>
-                        <option value="Pars Online">Pars Online</option>
-                        <option value="Pishgaman">Pishgaman</option>
-                        <option value="Fanava">Fanava</option>
-                        <option value="Other / Direct">Other / Direct</option>
+                    <div class="label-with-action">
+                        <label for="networkCountry">Network Country</label>
+                        <button type="button" id="btnAddCountry" class="small-btn" title="Add Custom Country">+ Custom</button>
+                    </div>
+                    <select id="networkCountry" class="modern-select">
+                        <option value="Iran" selected>Iran</option>
+                        <option value="Russia">Russia</option>
+                        <option value="China">China</option>
+                        <option value="Other / Global">Other / Global</option>
+                        <option value="__custom__">+ Add Custom Country...</option>
                     </select>
+                    <div id="customCountryBox" class="custom-inline-input" style="display: none;">
+                        <input type="text" id="customCountryInput" class="modern-input" placeholder="Type country name..." />
+                        <button type="button" id="btnSaveCountry" class="small-btn glow-btn">Add</button>
+                        <button type="button" id="btnCancelCountry" class="small-btn">✕</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="label-with-action">
+                        <label for="networkIsp">Network ISP / Operator</label>
+                        <button type="button" id="btnAddIsp" class="small-btn" title="Add Custom Operator">+ Custom</button>
+                    </div>
+                    <select id="networkIsp" class="modern-select">
+                        <!-- Populated dynamically based on selected country -->
+                    </select>
+                    <div id="customIspBox" class="custom-inline-input" style="display: none;">
+                        <input type="text" id="customIspInput" class="modern-input" placeholder="Type operator name..." />
+                        <button type="button" id="btnSaveIsp" class="small-btn glow-btn">Add</button>
+                        <button type="button" id="btnCancelIsp" class="small-btn">✕</button>
+                    </div>
                 </div>
 
                 <!-- Anti-Censorship Panel -->

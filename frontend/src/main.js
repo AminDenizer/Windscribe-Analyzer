@@ -7,6 +7,284 @@ const VALID_PROTOCOLS = {
     "ikev2": [500]
 };
 
+const DEFAULT_OPERATORS = {
+    "Iran": [
+        "MCI",
+        "Irancell",
+        "Rightel",
+        "Mokhaberat (TCI)",
+        "Shatel",
+        "Asiatech",
+        "Mobinnet",
+        "Zitel",
+        "HiWeb",
+        "Pars Online",
+        "Pishgaman",
+        "Fanava",
+        "Other / Direct"
+    ],
+    "Russia": [
+        "Rostelecom",
+        "MTS",
+        "Beeline",
+        "MegaFon",
+        "Tele2",
+        "ER-Telecom (Dom.ru)",
+        "NetByNet",
+        "Other / Direct"
+    ],
+    "China": [
+        "China Telecom",
+        "China Unicom",
+        "China Mobile",
+        "Other / Direct"
+    ],
+    "Other / Global": [
+        "Direct / LAN",
+        "Starlink",
+        "Cellular / 4G / 5G",
+        "Other / Direct"
+    ]
+};
+
+function getStoredCustomCountries() {
+    try {
+        const val = localStorage.getItem("windscribe_custom_countries");
+        return val ? JSON.parse(val) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveCustomCountry(countryName) {
+    const list = getStoredCustomCountries();
+    if (!list.includes(countryName)) {
+        list.push(countryName);
+        localStorage.setItem("windscribe_custom_countries", JSON.stringify(list));
+    }
+}
+
+function getStoredCustomOperators(country) {
+    try {
+        const val = localStorage.getItem(`windscribe_custom_ops_${country}`);
+        return val ? JSON.parse(val) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveCustomOperator(country, opName) {
+    const list = getStoredCustomOperators(country);
+    if (!list.includes(opName)) {
+        list.push(opName);
+        localStorage.setItem(`windscribe_custom_ops_${country}`, JSON.stringify(list));
+    }
+}
+
+let lastValidCountry = "Iran";
+let lastValidIsp = "MCI";
+
+function populateCountrySelect(selectedVal = "Iran") {
+    const select = document.getElementById("networkCountry");
+    if (!select) return;
+
+    const defaultCountries = ["Iran", "Russia", "China", "Other / Global"];
+    const customCountries = getStoredCustomCountries();
+    const allCountries = [...defaultCountries];
+    customCountries.forEach(c => {
+        if (!allCountries.includes(c)) allCountries.push(c);
+    });
+
+    select.innerHTML = "";
+    allCountries.forEach(country => {
+        const opt = document.createElement("option");
+        opt.value = country;
+        opt.textContent = country;
+        if (country === selectedVal) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    const customOpt = document.createElement("option");
+    customOpt.value = "__custom__";
+    customOpt.textContent = "+ Add Custom Country...";
+    select.appendChild(customOpt);
+
+    if (allCountries.includes(selectedVal)) {
+        select.value = selectedVal;
+        lastValidCountry = selectedVal;
+    } else {
+        select.value = allCountries[0] || "Iran";
+        lastValidCountry = select.value;
+    }
+}
+
+function populateIspSelect(country, selectedVal = "") {
+    const select = document.getElementById("networkIsp");
+    if (!select) return;
+
+    const defaults = DEFAULT_OPERATORS[country] || ["Other / Direct"];
+    const customs = getStoredCustomOperators(country);
+    const allOps = [...defaults];
+    customs.forEach(op => {
+        if (!allOps.includes(op)) allOps.push(op);
+    });
+
+    select.innerHTML = "";
+    allOps.forEach(op => {
+        const opt = document.createElement("option");
+        opt.value = op;
+        opt.textContent = op;
+        if (op === selectedVal) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    const customOpt = document.createElement("option");
+    customOpt.value = "__custom__";
+    customOpt.textContent = "+ Add Custom Operator...";
+    select.appendChild(customOpt);
+
+    if (selectedVal && allOps.includes(selectedVal)) {
+        select.value = selectedVal;
+        lastValidIsp = selectedVal;
+    } else {
+        select.value = allOps[0] || "Other / Direct";
+        lastValidIsp = select.value;
+    }
+}
+
+function initCountryAndIspSelectors() {
+    const countrySelect = document.getElementById("networkCountry");
+    const ispSelect = document.getElementById("networkIsp");
+
+    const customCountryBox = document.getElementById("customCountryBox");
+    const customCountryInput = document.getElementById("customCountryInput");
+    const btnAddCountry = document.getElementById("btnAddCountry");
+    const btnSaveCountry = document.getElementById("btnSaveCountry");
+    const btnCancelCountry = document.getElementById("btnCancelCountry");
+
+    const customIspBox = document.getElementById("customIspBox");
+    const customIspInput = document.getElementById("customIspInput");
+    const btnAddIsp = document.getElementById("btnAddIsp");
+    const btnSaveIsp = document.getElementById("btnSaveIsp");
+    const btnCancelIsp = document.getElementById("btnCancelIsp");
+
+    // Load initial state
+    populateCountrySelect("Iran");
+    populateIspSelect("Iran", "MCI");
+
+    if (countrySelect) {
+        countrySelect.addEventListener("change", () => {
+            if (countrySelect.value === "__custom__") {
+                if (customCountryBox) {
+                    customCountryBox.style.display = "flex";
+                    if (customCountryInput) customCountryInput.focus();
+                }
+            } else {
+                lastValidCountry = countrySelect.value;
+                if (customCountryBox) customCountryBox.style.display = "none";
+                populateIspSelect(countrySelect.value);
+            }
+        });
+    }
+
+    if (btnAddCountry && customCountryBox) {
+        btnAddCountry.addEventListener("click", () => {
+            const isHidden = customCountryBox.style.display === "none";
+            customCountryBox.style.display = isHidden ? "flex" : "none";
+            if (isHidden && customCountryInput) customCountryInput.focus();
+        });
+    }
+
+    const handleSaveCountry = () => {
+        if (!customCountryInput) return;
+        const name = customCountryInput.value.trim();
+        if (name) {
+            saveCustomCountry(name);
+            populateCountrySelect(name);
+            populateIspSelect(name);
+            customCountryInput.value = "";
+            if (customCountryBox) customCountryBox.style.display = "none";
+            logMsg(`Added custom country: ${name}`, "log-success");
+        }
+    };
+
+    if (btnSaveCountry) btnSaveCountry.addEventListener("click", handleSaveCountry);
+    if (customCountryInput) {
+        customCountryInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                handleSaveCountry();
+            } else if (e.key === "Escape") {
+                if (customCountryBox) customCountryBox.style.display = "none";
+                if (countrySelect) countrySelect.value = lastValidCountry;
+            }
+        });
+    }
+
+    if (btnCancelCountry && customCountryBox) {
+        btnCancelCountry.addEventListener("click", () => {
+            customCountryBox.style.display = "none";
+            if (countrySelect) countrySelect.value = lastValidCountry;
+        });
+    }
+
+    // ISP Handlers
+    if (ispSelect) {
+        ispSelect.addEventListener("change", () => {
+            if (ispSelect.value === "__custom__") {
+                if (customIspBox) {
+                    customIspBox.style.display = "flex";
+                    if (customIspInput) customIspInput.focus();
+                }
+            } else {
+                lastValidIsp = ispSelect.value;
+                if (customIspBox) customIspBox.style.display = "none";
+            }
+        });
+    }
+
+    if (btnAddIsp && customIspBox) {
+        btnAddIsp.addEventListener("click", () => {
+            const isHidden = customIspBox.style.display === "none";
+            customIspBox.style.display = isHidden ? "flex" : "none";
+            if (isHidden && customIspInput) customIspInput.focus();
+        });
+    }
+
+    const handleSaveIsp = () => {
+        if (!customIspInput || !countrySelect) return;
+        const name = customIspInput.value.trim();
+        if (name) {
+            const country = countrySelect.value !== "__custom__" ? countrySelect.value : lastValidCountry;
+            saveCustomOperator(country, name);
+            populateIspSelect(country, name);
+            customIspInput.value = "";
+            if (customIspBox) customIspBox.style.display = "none";
+            logMsg(`Added custom operator for ${country}: ${name}`, "log-success");
+        }
+    };
+
+    if (btnSaveIsp) btnSaveIsp.addEventListener("click", handleSaveIsp);
+    if (customIspInput) {
+        customIspInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                handleSaveIsp();
+            } else if (e.key === "Escape") {
+                if (customIspBox) customIspBox.style.display = "none";
+                if (ispSelect) ispSelect.value = lastValidIsp;
+            }
+        });
+    }
+
+    if (btnCancelIsp && customIspBox) {
+        btnCancelIsp.addEventListener("click", () => {
+            customIspBox.style.display = "none";
+            if (ispSelect) ispSelect.value = lastValidIsp;
+        });
+    }
+}
+
 let lastExcelPath = "";
 
 function logMsg(msg, type = "log-msg") {
@@ -388,6 +666,7 @@ async function fetchLocations(forceOnline = false) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+    initCountryAndIspSelectors();
     initProtocols();
     updateTweaksState();
 
@@ -557,8 +836,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (ports.length > 0) protocolPorts[proto] = ports;
         });
 
+        const countryElem = document.getElementById("networkCountry");
         const ispElem = document.getElementById("networkIsp");
-        const ispVal = ispElem ? ispElem.value : "Default / Direct";
+        const countryVal = (countryElem && countryElem.value !== "__custom__") ? countryElem.value : lastValidCountry;
+        const ispName = (ispElem && ispElem.value !== "__custom__") ? ispElem.value : lastValidIsp;
+        const ispVal = countryVal ? `${countryVal} - ${ispName}` : ispName;
 
         return {
             selectedLocations: selectedLocations,

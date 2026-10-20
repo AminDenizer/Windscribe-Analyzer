@@ -163,6 +163,19 @@ body {
     font-weight: 500;
 }
 
+.label-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.custom-inline-input {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+    align-items: center;
+}
+
 .toggle-row {
     flex-direction: row;
     justify-content: space-between;
