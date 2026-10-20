@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -15,15 +14,14 @@ type WindscribeWorker struct {
 }
 
 func NewWindscribeWorker() *WindscribeWorker {
-	// Usually C:\Program Files\Windscribe\windscribe-cli.exe
 	return &WindscribeWorker{
-		cliPath: `C:\Program Files\Windscribe\windscribe-cli.exe`,
+		cliPath: defaultWindscribeCLIPath(),
 	}
 }
 
 func (w *WindscribeWorker) RunCLI(ctx context.Context, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, w.cliPath, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	prepareCmd(cmd)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

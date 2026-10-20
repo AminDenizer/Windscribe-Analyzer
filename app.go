@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -273,9 +271,7 @@ func (a *App) ExportExcelReport() (string, error) {
 
 // OpenExcelFile opens the generated Excel file in default OS application
 func (a *App) OpenExcelFile(filePath string) error {
-	cmd := exec.Command("cmd.exe", "/c", "start", "", filePath)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd.Start()
+	return openFileInOS(filePath)
 }
 
 // StartTest starts the testing routine
