@@ -36,16 +36,16 @@ func (w *WindscribeWorker) RunCLI(ctx context.Context, args ...string) (string, 
 }
 
 func (w *WindscribeWorker) EnsureDisconnected(ctx context.Context) error {
-	out, err := w.RunCLI(ctx, "status")
-	if err != nil {
-		return err
+	for attempt := 0; attempt < 3; attempt++ {
+		out, err := w.RunCLI(ctx, "status")
+		if err == nil && strings.Contains(strings.ToUpper(out), "DISCONNECTED") {
+			return nil
+		}
+		_, _ = w.RunCLI(ctx, "disconnect")
+		time.Sleep(1 * time.Second)
 	}
-	if strings.Contains(strings.ToUpper(out), "DISCONNECTED") {
-		return nil
-	}
-	_, err = w.RunCLI(ctx, "disconnect")
-	time.Sleep(2 * time.Second)
-	return err
+	time.Sleep(500 * time.Millisecond)
+	return nil
 }
 
 func (w *WindscribeWorker) Connect(ctx context.Context, city string, protocol string, port int) error {

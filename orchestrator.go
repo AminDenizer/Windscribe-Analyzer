@@ -66,6 +66,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 	o.mu.Lock()
 	ctx, cancel := context.WithCancel(parentCtx)
 	o.cancel = cancel
+	defer o.worker.EnsureDisconnected(context.Background())
 
 	var queue []TestResult
 	var completedResults []TestResult
@@ -244,6 +245,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,
 			})
+			o.worker.EnsureDisconnected(context.Background())
 			continue
 		}
 
@@ -263,6 +265,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,
 			})
+			o.worker.EnsureDisconnected(context.Background())
 			continue
 		}
 
@@ -370,9 +373,12 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		o.completedResults = completedResults
 		o.mu.Unlock()
 
-		o.worker.Disconnect(ctx)
-		time.Sleep(2 * time.Second)
+		o.worker.EnsureDisconnected(context.Background())
+		time.Sleep(1 * time.Second)
 	}
+
+	// Always ensure complete disconnect when all tests finish
+	o.worker.EnsureDisconnected(context.Background())
 
 	o.mu.Lock()
 	o.remainingQueue = nil
