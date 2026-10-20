@@ -1,4 +1,4 @@
-name: Build and Release
+name: Multi-Platform Build and Release
 
 on:
   push:
@@ -9,10 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build Windows x64 Binary & Release
+  build-windows:
+    name: Build Windows x64
     runs-on: windows-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -39,38 +38,165 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build Standalone Windows Executable
+      - name: Build Windows Executable
         run: wails build -platform windows/amd64
 
-      - name: Generate SHA-256 Checksum
+      - name: Package Windows Artifacts
         shell: pwsh
         run: |
-          Get-FileHash -Algorithm SHA256 build/bin/windscribe-ultra-tester.exe | Format-Table -AutoSize | Out-File -Encoding utf8 build/bin/checksums.txt
+          mkdir dist-windows
+          Copy-Item build/bin/windscribe-ultra-tester.exe dist-windows/
+          Compress-Archive -Path build/bin/windscribe-ultra-tester.exe -DestinationPath dist-windows/windscribe-ultra-tester-windows-amd64.zip
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist-windows/*
+
+  build-macos:
+    name: Build macOS Universal
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build macOS Universal App
+        run: wails build -platform darwin/universal
+
+      - name: Package macOS Artifact
+        run: |
+          mkdir dist-macos
+          cd build/bin
+          zip -r ../../dist-macos/windscribe-ultra-tester-macos-universal.zip windscribe-ultra-tester.app
+          cd ../..
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist-macos/*
+
+  build-linux:
+    name: Build Linux x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev build-essential || sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev build-essential
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Linux Executable
+        run: wails build -platform linux/amd64
+
+      - name: Package Linux Artifact
+        run: |
+          mkdir dist-linux
+          cd build/bin
+          tar -czvf ../../dist-linux/windscribe-ultra-tester-linux-amd64.tar.gz windscribe-ultra-tester
+          cd ../..
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist-linux/*
+
+  publish-release:
+    name: Publish Multi-Platform Release
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate Checksums
+        working-directory: release-assets
+        run: |
+          sha256sum * > checksums.txt
+          cat checksums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Windscribe Ultra Analyzer ${{ github.ref_name }}
-          files: |
-            build/bin/windscribe-ultra-tester.exe
-            build/bin/checksums.txt
+          files: release-assets/*
           draft: false
           prerelease: false
           generate_release_notes: true
           body: |
             ## 🚀 Windscribe Ultra Analyzer Pro (${{ github.ref_name }})
 
-            ### 🌟 Key Features & Enhancements
-            - **Multi-Location Testing**: Comprehensive testing across global Windscribe server nodes categorized by Continent, Country, and Location with real-time keyword search.
+            ### 🌍 Multi-Platform Standalone Packages
+            - **Windows (x64)**: `windscribe-ultra-tester.exe` / `windscribe-ultra-tester-windows-amd64.zip`
+            - **macOS (Universal - Apple Silicon & Intel)**: `windscribe-ultra-tester-macos-universal.zip` (`.app` bundle)
+            - **Linux (x64)**: `windscribe-ultra-tester-linux-amd64.tar.gz`
+            - **Security & Integrity**: `checksums.txt` (SHA-256 for all artifacts)
+
+            ### 🌟 Key Features & Capabilities
+            - **Network Country & Dynamic Operator (ISP) Selection**:
+              - Pre-configured profiles for **Iran** (`MCI`, `Irancell`, `Rightel`, `Mokhaberat`, `Shatel`, `Asiatech`, `Mobinnet`, `Zitel`, `HiWeb`, `Pars Online`, `Pishgaman`, `Fanava`, etc.) and **Russia** (`Rostelecom`, `MTS`, `Beeline`, `MegaFon`, `Tele2`, `ER-Telecom / Dom.ru`, `NetByNet`, etc.).
+              - In-app custom additions for any country or operator with persistent storage.
+            - **Multi-Location Testing**: Comprehensive testing across global Windscribe server nodes categorized by Continent, Country, and Location with real-time fuzzy search.
             - **Multi-Protocol & Port Scanning**: Native benchmarking across WireGuard, UDP, TCP, Stealth, WStunnel, and IKEv2 on all censorship-evasion ports.
-            - **Anti-Censorship & Amnezia Integration**: Full support for Amnezia junk packets (Iran, UAE, Russia profiles), server routing (Auto/Regular/Alternate), large TLS padding, and domain fronting via Custom SNI.
-            - **ISP & Operator Benchmark Tagging**: Select and isolate network performance across Iranian and global providers (`MCI`, `Irancell`, `Rightel`, `Mokhaberat (TCI)`, `Shatel`, `Asiatech`, `Mobinnet`, `Zitel`, `HiWeb`, etc.).
+            - **Anti-Censorship & Amnezia Tweak Matrix**: Full support for Amnezia junk packets (Iran, UAE, Russia profiles), server routing (Auto/Regular/Alternate), large TLS padding, and domain fronting via Custom SNI.
+            - **Reliable Lifecycle Management**: Clean and guaranteed disconnect of the Windscribe VPN client on test completion, timeouts, or user pause.
             - **Real-Time Live Telemetry**: Dynamic live dashboard streaming Ping, Jitter, Download, and Upload speeds before transitioning to the next target.
             - **Automated Color-Coded Excel Quality Reports**: Auto-exports formatted `.xlsx` matrices after every test session (Green: Healthy, Yellow: Moderate, Red: Unusable).
             - **Stateful Pause & Resume**: Stop at any time with immediate CLI disconnection, and resume remaining queue anytime.
-            - **Zero-Dependency Portable Binary**: Packaged as a single Windows executable powered by Go, Wails v2, and WebView2.
 
             ### 📥 Installation & Run
-            1. Download **`windscribe-ultra-tester.exe`** from the Assets below.
-            2. Make sure the official **Windscribe desktop application** is installed on your Windows system.
-            3. Run `windscribe-ultra-tester.exe` directly (portable, no installation required).
+            - **Windows**: Download `windscribe-ultra-tester.exe` (or zip) and run.
+            - **macOS**: Download `windscribe-ultra-tester-macos-universal.zip`, extract `windscribe-ultra-tester.app` to Applications, and launch.
+            - **Linux**: Download `windscribe-ultra-tester-linux-amd64.tar.gz`, extract and run `./windscribe-ultra-tester`.
+            - *Prerequisite*: Make sure the official **Windscribe desktop application / CLI** is installed on your machine.

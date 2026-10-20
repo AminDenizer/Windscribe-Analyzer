@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Frontend-Vite_%2B_JS-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite + Vanilla JS" />
   <img src="https://img.shields.io/badge/Database-SQLite3-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite3" />
   <img src="https://img.shields.io/badge/Reports-Excelize_v2-217346?style=for-the-badge&logo=microsoftexcel&logoColor=white" alt="Excelize" />
-  <img src="https://img.shields.io/badge/Platform-Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x64" />
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Platform" />
   <img src="https://img.shields.io/badge/License-MIT-2ea043?style=for-the-badge" alt="License" />
 </p>
 
@@ -116,17 +116,26 @@ flowchart TD
 
 ## 💻 System Requirements
 
-- **Operating System**: Windows 10 / 11 (64-bit)
-- **Windscribe Client**: Windscribe Desktop v2.4+ installed (`windscribe-cli.exe` is utilized)
-- **Runtime**: Microsoft Edge WebView2 Runtime (preinstalled on Windows 10/11)
+- **Operating Systems**:
+  - **Windows**: Windows 10 / 11 (64-bit)
+  - **macOS**: macOS 11+ Big Sur, Monterey, Ventura, Sonoma, Sequoia (Universal: Intel & Apple Silicon M1/M2/M3/M4)
+  - **Linux**: Ubuntu 20.04+, Debian 11+, Fedora, Arch Linux, etc.
+- **Windscribe Client**: Official Windscribe Desktop client installed (native `windscribe-cli` is utilized)
+- **Webview Runtime**:
+  - Windows: Microsoft Edge WebView2 (built-in on Windows 10/11)
+  - macOS: WebKit (built-in macOS Cocoa runtime)
+  - Linux: `libwebkit2gtk-4.0` / `libwebkit2gtk-4.1`
 
 ---
 
 ## 🚀 Installation & Quick Start
 
-1. Download **`windscribe-ultra-tester.exe`** from the [Releases](../../releases/latest) section.
-2. Ensure the official **Windscribe desktop application** is installed on your Windows PC.
-3. Launch `windscribe-ultra-tester.exe` directly (portable, no installation required).
+1. Go to the [Releases](../../releases/latest) section and download the package for your platform:
+   - **Windows**: `windscribe-ultra-tester.exe` (or zip)
+   - **macOS**: `windscribe-ultra-tester-macos-universal.zip` (extract `windscribe-ultra-tester.app` and launch)
+   - **Linux**: `windscribe-ultra-tester-linux-amd64.tar.gz` (extract and run `./windscribe-ultra-tester`)
+2. Ensure the official **Windscribe desktop client** is installed on your machine.
+3. Launch the application. No complex installation or setup is needed!
 
 ---
 
