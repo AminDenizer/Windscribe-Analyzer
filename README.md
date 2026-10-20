@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  Windscribe Ultra Analyzer Pro is a high-performance desktop application designed to systematically benchmark, diagnose, and audit Windscribe VPN server nodes across restrictive networks and Deep Packet Inspection (DPI) environments. Built with <b>Go</b> and <b>Wails v2</b>, it orchestrates the native Windscribe CLI to evaluate protocol resilience, capture live telemetry (Ping, Jitter, Download, Upload), and automatically generate professional, color-coded Excel audit sheets.
+  Windscribe Ultra Analyzer Pro is a high-performance desktop application designed to systematically benchmark, diagnose, and audit Windscribe VPN server nodes across restrictive networks and Deep Packet Inspection (DPI) environments, with dedicated optimization for **Iran** (National Information Network filtering) and **Russia** (TSPU / RKN blockades). Built with <b>Go</b> and <b>Wails v2</b>, it orchestrates the native Windscribe CLI to evaluate protocol resilience, capture live telemetry (Ping, Jitter, Download, Upload), and automatically generate professional, color-coded Excel audit sheets.
 </p>
 
 ---
@@ -73,16 +73,21 @@ flowchart TD
   - Unified master selector with live count badge (`X Protos, Y Ports`).
 
 - **Anti-Censorship & Amnezia Integration**:
-  - Native integration with Amnezia junk-packet presets:
-    `J - Iran Junk Packets`, `I - UAE and Iran Legacy`, `H - Iran 26 May 2026`, `A - No Junk Russia Primary`, `B - No Junk Russia Alt`, `C - With Junk Russia Primary`, `D - With Junk Russia Alt`, `E - Baseline No Junk`, `F - Baseline With Junk`, `G - Popular Russia Website with Junk`.
+  - Native integration with Amnezia junk-packet presets specifically designed for **Iran** and **Russia**:
+    - **Iran Profiles**: `J - Iran Junk Packets`, `I - UAE and Iran Legacy`, `H - Iran 26 May 2026`.
+    - **Russia Profiles**: `A - No Junk Russia Primary`, `B - No Junk Russia Alt`, `C - With Junk Russia Primary`, `D - With Junk Russia Alt`, `G - Popular Russia Website with Junk`.
+    - **General Baseline**: `E - Baseline No Junk`, `F - Baseline With Junk`.
   - Configurable **Server Routing**: `Auto`, `Regular`, and `Alternate`.
   - **Large TLS Padding**: Masks TLS handshake packet size signatures against statistical classifiers.
   - **Custom SNI Domain Fronting**: Injects custom SNI for Stealth and WStunnel (default: `example.com`), automatically enabled when any stealth or wstunnel port is selected.
 
-- **ISP & Operator Benchmark Tagging**:
-  - Tag test batches by network provider to analyze operator-specific DPI throttling:
-    `MCI`, `Irancell`, `Rightel`, `Mokhaberat (TCI)`, `Shatel`, `Asiatech`, `Mobinnet`, `Zitel`, `HiWeb`, `Pars Online`, `Pishgaman`, `Fanava`, `Other / Direct`.
-  - Selected ISP is stamped across historical database records and included in Column C of Excel audit files.
+- **Country & Operator (ISP) Benchmark Tagging**:
+  - Tag test batches by country and network provider to analyze operator-specific DPI throttling:
+    - **Iran Operators**: `MCI`, `Irancell`, `Rightel`, `Mokhaberat (TCI)`, `Shatel`, `Asiatech`, `Mobinnet`, `Zitel`, `HiWeb`, `Pars Online`, `Pishgaman`, `Fanava`, `Other / Direct`.
+    - **Russia Operators**: `Rostelecom`, `MTS`, `Beeline`, `MegaFon`, `Tele2`, `ER-Telecom (Dom.ru)`, `NetByNet`, `Other / Direct`.
+    - **China & Global**: Pre-populated profiles for China Telecom/Unicom/Mobile, Starlink, Direct/LAN.
+    - **Dynamic Custom Additions**: Users can add any custom country or custom ISP/operator directly through the UI, stored persistently.
+  - Selected Country and ISP are stamped across historical database records and included in Column C of Excel audit files.
 
 - **Live Telemetry & Dashboard**:
   - Decoupled modern stat cards with dedicated color-coded badges:
@@ -127,7 +132,7 @@ flowchart TD
 
 ## 📖 Usage Workflow
 
-1. **Select Network ISP**: Choose your current internet provider from the `Network ISP / Operator` menu.
+1. **Select Network Country & ISP**: Choose your current location (**Iran**, **Russia**, etc.) and corresponding provider, or add a custom country/operator if not listed.
 2. **Configure Anti-Censorship**:
    - Enable **Protocol Tweaks**.
    - Select an **Amnezia Config** preset (e.g. `J - Iran Junk Packets`).
