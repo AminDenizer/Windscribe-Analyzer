@@ -115,6 +115,16 @@ flowchart TD
 
 ## 🚀 Установка и быстрый старт
 
+### 🪟 Установка через Windows Package Manager (Winget)
+
+Вы можете установить и обновлять утилиту напрямую через официальный менеджер пакетов Windows:
+
+```powershell
+winget install AminDenizer.WindscribeUltraAnalyzer
+```
+
+---
+
 ### ⚡ Быстрый запуск одной строкой в PowerShell (Windows)
 
 Откройте **PowerShell** и вставьте следующую команду, чтобы автоматически скачать, снять блокировку SmartScreen и запустить приложение:

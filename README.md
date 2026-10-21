@@ -144,9 +144,19 @@ flowchart TD
 
 ## 🚀 Installation & Quick Start
 
+### 🪟 Install via Windows Package Manager (Winget)
+
+You can install and update the application directly via the official Windows Package Manager:
+
+```powershell
+winget install AminDenizer.WindscribeUltraAnalyzer
+```
+
+---
+
 ### ⚡ 1-Line PowerShell Quick Launch (Windows)
 
-Open **PowerShell** and paste the command below to automatically download, unblock, and launch the latest version:
+Open **PowerShell** and paste the command below to automatically download, unblock, and launch the latest version without installation:
 
 ```powershell
 irm https://github.com/AminDenizer/Windscribe-Analyzer/releases/latest/download/windscribe-ultra-tester.exe -OutFile windscribe-ultra-tester.exe; Unblock-File .\windscribe-ultra-tester.exe; .\windscribe-ultra-tester.exe
