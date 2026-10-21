@@ -66,7 +66,11 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 	o.mu.Lock()
 	ctx, cancel := context.WithCancel(parentCtx)
 	o.cancel = cancel
-	defer o.worker.EnsureDisconnected(context.Background())
+	defer func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+		defer cancel()
+		_ = o.worker.EnsureDisconnected(stopCtx)
+	}()
 
 	var queue []TestResult
 	var completedResults []TestResult
@@ -154,6 +158,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					}
 
 					queue = append(queue, TestResult{
+						Timestamp:          time.Now().Format("2006-01-02 15:04:05"),
 						Location:           loc.Location,
 						City:               loc.City,
 						Country:            loc.Region,
@@ -184,14 +189,29 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 	}
 	o.mu.Unlock()
 
+	// Inject and synchronize live Anti-Censorship settings (Amnezia, SNI, Server Routing, Large TLS) into Windscribe
+	sendUpdate(EventUpdate{
+		Message: "Synchronizing Anti-Censorship parameters with Windscribe Engine...",
+		Status:  "Configuring...",
+	})
+	_ = o.worker.ApplyConnectionTweaks(ctx, config, func(msg string) {
+		sendUpdate(EventUpdate{
+			Message: msg,
+			Status:  "Configuring...",
+		})
+	})
+
 	for i, task := range queue {
 		o.mu.Lock()
 		o.remainingQueue = queue[i:]
 		o.mu.Unlock()
 
 		if ctx.Err() != nil {
+			stopCtx, stopCancel := context.WithTimeout(context.Background(), 8*time.Second)
+			_ = o.worker.EnsureDisconnected(stopCtx)
+			stopCancel()
+
 			o.mu.Lock()
-			o.worker.EnsureDisconnected(context.Background())
 			var excelPath string
 			if len(completedResults) > 0 {
 				timestamp := time.Now().Format("2006-01-02_15-04-05")
@@ -215,6 +235,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 
 		// Step 1: Reset telemetry cards for next test
 		currentTested := len(completedResults) + 1
+		task.Timestamp = time.Now().Format("2006-01-02 15:04:05")
 		sendUpdate(EventUpdate{
 			ResetCards:  true,
 			Message:     fmt.Sprintf("[%d/%d] Preparing %s - %s (%s:%d)...", currentTested, o.totalTasks, task.Country, task.Location, task.Protocol, task.Port),
@@ -223,7 +244,9 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			TotalCount:  o.totalTasks,
 		})
 
-		o.worker.EnsureDisconnected(ctx)
+		discCtx1, discCancel1 := context.WithTimeout(ctx, 8*time.Second)
+		_ = o.worker.EnsureDisconnected(discCtx1)
+		discCancel1()
 
 		// Target connects by Location Nickname (e.g. "1984", "Seine")
 		targetLoc := task.Location
@@ -245,7 +268,9 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,
 			})
-			o.worker.EnsureDisconnected(context.Background())
+			discCtxErr, discCancelErr := context.WithTimeout(context.Background(), 8*time.Second)
+			_ = o.worker.EnsureDisconnected(discCtxErr)
+			discCancelErr()
 			continue
 		}
 
@@ -265,7 +290,9 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,
 			})
-			o.worker.EnsureDisconnected(context.Background())
+			discCtxTo, discCancelTo := context.WithTimeout(context.Background(), 8*time.Second)
+			_ = o.worker.EnsureDisconnected(discCtxTo)
+			discCancelTo()
 			continue
 		}
 
@@ -282,12 +309,15 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				go onConnected()
 			}
 
-			// Wait specified seconds for route stability
+			// Wait specified seconds for route stability (abortable via context)
 			sleepDuration := time.Duration(config.SpeedWait) * time.Second
 			if sleepDuration < 1*time.Second {
 				sleepDuration = 1 * time.Second
 			}
-			time.Sleep(sleepDuration)
+			select {
+			case <-ctx.Done():
+			case <-time.After(sleepDuration):
+			}
 
 			// Step 2: Progressive Speedtest Measurement
 			var speedtestClient = speedtest.New()
@@ -373,12 +403,16 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		o.completedResults = completedResults
 		o.mu.Unlock()
 
-		o.worker.EnsureDisconnected(context.Background())
-		time.Sleep(1 * time.Second)
+		discCtxDone, discCancelDone := context.WithTimeout(ctx, 8*time.Second)
+		_ = o.worker.EnsureDisconnected(discCtxDone)
+		discCancelDone()
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	// Always ensure complete disconnect when all tests finish
-	o.worker.EnsureDisconnected(context.Background())
+	finalCtx, finalCancel := context.WithTimeout(context.Background(), 8*time.Second)
+	_ = o.worker.EnsureDisconnected(finalCtx)
+	finalCancel()
 
 	o.mu.Lock()
 	o.remainingQueue = nil
@@ -417,6 +451,10 @@ func (o *Orchestrator) Stop() {
 	}
 	o.mu.Unlock()
 
-	// Immediately disconnect Windscribe VPN client
-	o.worker.EnsureDisconnected(context.Background())
+	// Asynchronously ensure disconnected so Wails IPC returns immediately to the UI
+	go func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		_ = o.worker.EnsureDisconnected(stopCtx)
+	}()
 }

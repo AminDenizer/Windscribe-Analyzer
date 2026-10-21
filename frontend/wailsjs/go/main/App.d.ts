@@ -10,6 +10,8 @@ export function GetAmneziaConfigs():Promise<Array<main.AmneziaConfigItem>>;
 
 export function GetBestLocations():Promise<Array<main.TestResult>>;
 
+export function GetOS():Promise<string>;
+
 export function OpenExcelFile(arg1:string):Promise<void>;
 
 export function RefreshAmneziaConfigs():Promise<Array<main.AmneziaConfigItem>>;

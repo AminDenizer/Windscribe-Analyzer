@@ -42,12 +42,19 @@ jobs:
       - name: Build Windows Executable
         run: wails build -platform windows/amd64
 
+      - name: Sign Windows Executable (Authenticode)
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Windscribe Ultra Tester, O=Open Source Community" -CertStoreLocation "Cert:\CurrentUser\My" -HashAlgorithm SHA256
+          Set-AuthenticodeSignature -FilePath "build/bin/windscribe-ultra-tester.exe" -Certificate $cert -TimestampServer "http://timestamp.digicert.com"
+
       - name: Package Windows Artifacts
         shell: pwsh
         run: |
           mkdir dist-windows
           Copy-Item build/bin/windscribe-ultra-tester.exe dist-windows/
-          Compress-Archive -Path build/bin/windscribe-ultra-tester.exe -DestinationPath dist-windows/windscribe-ultra-tester-windows-amd64.zip
+          Copy-Item run_without_smartscreen.bat dist-windows/
+          Compress-Archive -Path build/bin/windscribe-ultra-tester.exe, run_without_smartscreen.bat -DestinationPath dist-windows/windscribe-ultra-tester-windows-amd64.zip
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4

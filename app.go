@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	goRuntime "runtime"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -284,4 +285,9 @@ func (a *App) StartTest(config TestConfig) {
 // StopTest cancels the testing routine
 func (a *App) StopTest() {
 	a.orchestrator.Stop()
+}
+
+// GetOS returns current host operating system (windows, linux, darwin)
+func (a *App) GetOS() string {
+	return goRuntime.GOOS
 }

@@ -8,6 +8,14 @@
   <img src="https://img.shields.io/badge/License-MIT-2ea043?style=for-the-badge" alt="License" />
 </p>
 
+<p align="center">
+  <a href="README.md"><kbd>&nbsp; 🇬🇧 English &nbsp;</kbd></a>
+  &nbsp;&nbsp;
+  <a href="docs/README_FA.md"><kbd>&nbsp; 🇮🇷 پارسی &nbsp;</kbd></a>
+  &nbsp;&nbsp;
+  <a href="docs/README_RU.md"><kbd>&nbsp; 🇷🇺 Русский &nbsp;</kbd></a>
+</p>
+
 <h1 align="center">🌐 Windscribe Ultra Analyzer Pro</h1>
 
 <p align="center">
@@ -72,14 +80,20 @@ flowchart TD
     - **IKEv2**: `500`
   - Unified master selector with live count badge (`X Protos, Y Ports`).
 
-- **Anti-Censorship & Amnezia Integration**:
-  - Native integration with Amnezia junk-packet presets specifically designed for **Iran** and **Russia**:
-    - **Iran Profiles**: `J - Iran Junk Packets`, `I - UAE and Iran Legacy`, `H - Iran 26 May 2026`.
-    - **Russia Profiles**: `A - No Junk Russia Primary`, `B - No Junk Russia Alt`, `C - With Junk Russia Primary`, `D - With Junk Russia Alt`, `G - Popular Russia Website with Junk`.
-    - **General Baseline**: `E - Baseline No Junk`, `F - Baseline With Junk`.
-  - Configurable **Server Routing**: `Auto`, `Regular`, and `Alternate`.
-  - **Large TLS Padding**: Masks TLS handshake packet size signatures against statistical classifiers.
-  - **Custom SNI Domain Fronting**: Injects custom SNI for Stealth and WStunnel (default: `example.com`), automatically enabled when any stealth or wstunnel port is selected.
+- **Anti-Censorship & Amnezia Engine Injection**:
+  - **Live Engine Parameter Injection**: Unlike basic metadata logging, the analyzer directly synchronizes and injects your selected settings into Windscribe's core engine:
+    - **Amnezia Presets (A through J)**: Decrypts and injects `AmneziawgPreset` directly into Windscribe's Qt `SimpleCrypt` engine storage:
+      - **Iran Profiles**: `J - Iran Junk Packets`, `I - UAE and Iran Legacy`, `H - Iran 26 May 2026`.
+      - **Russia Profiles**: `A - No Junk Russia Primary`, `B - No Junk Russia Alt`, `C - With Junk Russia Primary`, `D - With Junk Russia Alt`, `G - Popular Russia Website with Junk`.
+      - **General Baseline**: `E - Baseline No Junk`, `F - Baseline With Junk`.
+    - **Custom SNI Domain**: Injects `CustomSniDomain` for Stealth and WStunnel protocols (e.g. `soft98.ir`, `splus.ir`, `digikala.com`).
+    - **Server Routing**: Dynamically toggles `ServerRoutingMethod` between `Auto` (0), `Regular` (1), and `Alternate` (2).
+    - **Large TLS Padding**: Injects `ws-stealth-extra-tls-padding` into Windscribe's `windscribe_extra.conf`, dynamically recognized via Windscribe's real-time `FileChangeWatcher`.
+  - **Verification in Windscribe Logs**: You can inspect `%LOCALAPPDATA%\Windscribe\Windscribe2\client.log` (Windows) or `~/.config/Windscribe/client.log` (Linux) to verify live injection:
+    ```json
+    {"mod": "conn", "msg": "Using protocol tweaks, preset: \"J - Iran Junk Packets\""}
+    {"mod": "conn", "msg": "Added 5 I-parameters to OpenVPN config from preset: \"J - Iran Junk Packets\""}
+    ```
 
 - **Country & Operator (ISP) Benchmark Tagging**:
   - Tag test batches by country and network provider to analyze operator-specific DPI throttling:
@@ -130,12 +144,31 @@ flowchart TD
 
 ## 🚀 Installation & Quick Start
 
+### ⚡ 1-Line PowerShell Quick Launch (Windows)
+
+Open **PowerShell** and paste the command below to automatically download, unblock, and launch the latest version:
+
+```powershell
+irm https://github.com/AminDenizer/Windscribe-Analyzer/releases/latest/download/windscribe-ultra-tester.exe -OutFile windscribe-ultra-tester.exe; Unblock-File .\windscribe-ultra-tester.exe; .\windscribe-ultra-tester.exe
+```
+
+---
+
+### 📦 Manual Download & Installation
+
 1. Go to the [Releases](../../releases/latest) section and download the package for your platform:
-   - **Windows**: `windscribe-ultra-tester.exe` (or zip)
+   - **Windows**: `windscribe-ultra-tester.exe` (or `windscribe-ultra-tester-windows-amd64.zip`)
    - **macOS**: `windscribe-ultra-tester-macos-universal.zip` (extract `windscribe-ultra-tester.app` and launch)
    - **Linux**: `windscribe-ultra-tester-linux-amd64.tar.gz` (extract and run `./windscribe-ultra-tester`)
 2. Ensure the official **Windscribe desktop client** is installed on your machine.
 3. Launch the application. No complex installation or setup is needed!
+
+> [!TIP]
+> **Windows SmartScreen Note**:  
+> Because this is a newly released, open-source binary built via GitHub Actions, Windows Defender SmartScreen may display an *"Unknown publisher"* prompt when downloaded via web browsers.
+> - **1-Line PowerShell**: Run the snippet above (bypasses browser Mark-of-the-Web flags).
+> - **1-Click Batch**: Run `run_without_smartscreen.bat` included in the zip distribution.
+> - **Or via Dialog**: Click **"More info"** on the Windows SmartScreen alert, then click **"Run anyway"**.
 
 ---
 
@@ -208,6 +241,19 @@ Output binary: `build/bin/windscribe-ultra-tester.exe`
   SNI domain fronting is an obfuscation feature specific to TLS-wrapped protocols (Stealth and WStunnel).
 - **Does it require administrative privileges?**  
   Standard user privileges are sufficient. If your Windows TAP/Wintun adapter requires elevation, run as Administrator.
+
+---
+
+## ⚠️ Legal & Usage Disclaimer
+
+**Please read this disclaimer carefully before using this software:**
+
+1. **Independent Project**: This application is an **unofficial, community-developed, open-source utility**. It is **NOT** affiliated with, endorsed by, sponsored by, or certified by **Windscribe Limited**, its parent company, or its subsidiaries.
+2. **"AS IS" & No Warranty**: This software is provided *"as is"* and *"as available"*, without any warranties or guarantees of any kind, whether express, statutory, or implied, including, without limitation, any warranties of merchantability, fitness for a particular purpose, non-infringement, reliability, or uninterrupted operation.
+3. **User Responsibility & Assumption of Risk**: 
+   - Use of this software is entirely at your own discretion and risk. 
+   - You are solely responsible for compliance with Windscribe's Terms of Service, Acceptable Use Policies, and all applicable local and international laws and regulations.
+   - The authors, contributors, and maintainers of this project accept **no liability or responsibility** for any account bans, suspensions, bandwidth consumption, data overage charges, ISP actions, system freezes, network disconnections, or any direct, indirect, incidental, special, or consequential damages resulting from the use or inability to use this software.
 
 ---
 

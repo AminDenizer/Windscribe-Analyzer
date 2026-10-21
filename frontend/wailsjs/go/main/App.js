@@ -18,6 +18,10 @@ export function GetBestLocations() {
   return window['go']['main']['App']['GetBestLocations']();
 }
 
+export function GetOS() {
+  return window['go']['main']['App']['GetOS']();
+}
+
 export function OpenExcelFile(arg1) {
   return window['go']['main']['App']['OpenExcelFile'](arg1);
 }

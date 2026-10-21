@@ -414,7 +414,8 @@ function initProtocols() {
         cbProto.type = "checkbox";
         cbProto.value = proto;
         cbProto.className = "cb-proto";
-        if (proto === "stealth" || proto === "wstunnel") cbProto.checked = true;
+        const isProtoActive = (proto === "stealth" || proto === "wstunnel");
+        cbProto.checked = isProtoActive;
         
         header.appendChild(cbProto);
         header.appendChild(document.createTextNode(" " + proto.toUpperCase()));
@@ -428,7 +429,11 @@ function initProtocols() {
             cbPort.type = "checkbox";
             cbPort.value = port;
             cbPort.className = `cb-port-${proto}`;
-            if (port === 443 || port === 500) cbPort.checked = true;
+            if (isProtoActive && port === 443) {
+                cbPort.checked = true;
+            } else {
+                cbPort.checked = false;
+            }
             
             lbl.appendChild(cbPort);
             lbl.appendChild(document.createTextNode(" " + port));
@@ -667,6 +672,19 @@ async function fetchLocations(forceOnline = false) {
 
 document.addEventListener("DOMContentLoaded", async () => {
     initCountryAndIspSelectors();
+
+    // Query OS from backend to customize supported protocols (e.g. Linux does not support IKEv2)
+    try {
+        if (window.go && window.go.main && window.go.main.App && window.go.main.App.GetOS) {
+            const currentOS = await window.go.main.App.GetOS();
+            if (currentOS === "linux") {
+                delete VALID_PROTOCOLS["ikev2"];
+            }
+        }
+    } catch (e) {
+        console.warn("Could not query OS from backend:", e);
+    }
+
     initProtocols();
     updateTweaksState();
 
@@ -831,6 +849,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const protocolPorts = {};
         Object.keys(VALID_PROTOCOLS).forEach(proto => {
+            const protoCb = document.querySelector(`.cb-proto[value="${proto}"]`);
+            if (protoCb && !protoCb.checked && !protoCb.indeterminate) {
+                return; // Protocol is explicitly disabled
+            }
             const ports = [];
             document.querySelectorAll(`.cb-port-${proto}:checked`).forEach(pCb => ports.push(parseInt(pCb.value)));
             if (ports.length > 0) protocolPorts[proto] = ports;
@@ -897,18 +919,25 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const remTxt = document.getElementById("remainingCountTxt");
                 if (remTxt) remTxt.innerText = remaining;
                 btnContinue.style.display = "flex";
+                btnContinue.disabled = false;
             }
             btnStart.innerText = "START NEW TEST";
             btnStart.disabled = false;
             btnStop.disabled = true;
+            btnStop.innerText = "STOP SESSION";
         } else if (update.status === "Done") {
             if (btnContinue) btnContinue.style.display = "none";
             btnStart.innerText = "START ANALYZING";
             btnStart.disabled = false;
             btnStop.disabled = true;
+            btnStop.innerText = "STOP SESSION";
         } else if (update.status === "Stopped") {
             btnStop.disabled = true;
+            btnStop.innerText = "STOP SESSION";
             btnStart.disabled = false;
+            if (btnContinue && !update.canResume) {
+                btnContinue.style.display = "none";
+            }
         }
     });
 
@@ -920,6 +949,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         btnStart.disabled = true;
         btnStart.innerText = "TESTING IN PROGRESS...";
         btnStop.disabled = false;
+        btnStop.innerText = "STOP SESSION";
         if (btnContinue) btnContinue.style.display = "none";
         if (btnExportExcel) btnExportExcel.disabled = true;
         document.getElementById("valPing").innerText = "--";
@@ -941,6 +971,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             btnStart.disabled = true;
             btnContinue.style.display = "none";
             btnStop.disabled = false;
+            btnStop.innerText = "STOP SESSION";
             document.getElementById("valStatus").innerText = "Resuming...";
             hideExcelToast();
 
@@ -953,6 +984,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     btnStop.addEventListener("click", () => {
         logMsg("Stopping test session and disconnecting Windscribe...", "log-error");
         btnStop.disabled = true;
+        btnStop.innerText = "STOPPING...";
         window.go.main.App.StopTest();
     });
 
