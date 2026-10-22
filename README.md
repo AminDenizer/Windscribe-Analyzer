@@ -86,7 +86,7 @@ flowchart TD
       - **Iran Profiles**: `J - Iran Junk Packets`, `I - UAE and Iran Legacy`, `H - Iran 26 May 2026`.
       - **Russia Profiles**: `A - No Junk Russia Primary`, `B - No Junk Russia Alt`, `C - With Junk Russia Primary`, `D - With Junk Russia Alt`, `G - Popular Russia Website with Junk`.
       - **General Baseline**: `E - Baseline No Junk`, `F - Baseline With Junk`.
-    - **Custom SNI Domain**: Injects `CustomSniDomain` for Stealth and WStunnel protocols (e.g. `soft98.ir`, `splus.ir`, `digikala.com`).
+    - **Custom SNI Domain**: Injects `CustomSniDomain` for Stealth and WStunnel protocols to customize TLS SNI headers for deep packet inspection evasion.
     - **Server Routing**: Dynamically toggles `ServerRoutingMethod` between `Auto` (0), `Regular` (1), and `Alternate` (2).
     - **Large TLS Padding**: Injects `ws-stealth-extra-tls-padding` into Windscribe's `windscribe_extra.conf`, dynamically recognized via Windscribe's real-time `FileChangeWatcher`.
   - **Verification in Windscribe Logs**: You can inspect `%LOCALAPPDATA%\Windscribe\Windscribe2\client.log` (Windows) or `~/.config/Windscribe/client.log` (Linux) to verify live injection:
@@ -144,9 +144,10 @@ flowchart TD
 
 ## 🚀 Installation & Quick Start
 
-### 🪟 Install via Windows Package Manager (Winget)
+### 🪟 Install via Windows Package Manager (Winget) *(Coming Soon)*
 
-You can install and update the application directly via the official Windows Package Manager:
+> [!NOTE]
+> *(Coming Soon)* The package has been submitted to the official Windows Package Manager repository and is currently undergoing final Microsoft moderation. Once merged, you can install and update directly via:
 
 ```powershell
 winget install AminDenizer.WindscribeUltraAnalyzer
@@ -190,7 +191,7 @@ irm https://github.com/AminDenizer/Windscribe-Analyzer/releases/latest/download/
    - Select an **Amnezia Config** preset (e.g. `J - Iran Junk Packets`).
    - Select **Server Routing** (`Regular`, `Auto`, or `Alternate`).
    - Optionally toggle **Large TLS Padding**.
-   - If testing Stealth or WStunnel, customize the **Custom SNI Domain** (default: `example.com`).
+   - If testing Stealth or WStunnel, customize the **Custom SNI Domain** as needed.
 3. **Select Protocols & Ports**:
    - Use the master checkbox to select all or pick specific protocols and ports.
 4. **Choose Server Locations**:

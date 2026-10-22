@@ -71,7 +71,7 @@ flowchart TD
   - **پروفایل‌های مخصوص ایران:** `J - Iran Junk Packets`، `I - UAE and Iran Legacy`، `H - Iran 26 May 2026`.
   - **پروفایل‌های مخصوص روسیه:** `A - No Junk Russia Primary`، `B - No Junk Russia Alt`، `C - With Junk Russia Primary`، `D - With Junk Russia Alt`، `G - Popular Russia Website with Junk`.
   - **پروفایل‌های عمومی:** `E - Baseline No Junk`، `F - Baseline With Junk`.
-- **آدرس دامنه اختصاصی (Custom SNI Domain):** تنظیم و تزریق مستقیم آدرس‌های SNI برای پروتکل‌های Stealth و WStunnel (مانند دامنه‌های مجاز داخلی).
+- **آدرس دامنه اختصاصی (Custom SNI Domain):** تنظیم و تزریق مستقیم آدرس‌های سفارشی SNI برای پروتکل‌های Stealth و WStunnel جهت تغییر هدرهای TLS و دور زدن فیلترینگ.
 - **مسیریابی سرورها (Server Routing):** سوئیچ هوشمند بین حالت‌های `Auto` (خودکار)، `Regular` (عادی) و `Alternate` (جایگزین).
 - **پدینگ سایز بزرگ (Large TLS Padding):** فعال‌سازی یا غیرفعال‌سازی پارامتر `ws-stealth-extra-tls-padding` در فایل تنظیمات واینداسکرایب با اعمال لحظه‌ای.
 - **تزریق DNS داخلی (App Internal DNS):** امکان ست کردن DNS دلخواه (Cloudflare, Google, ControlD, OpenDNS, OS Default) بر روی کلاینت واینداسکرایب.
@@ -117,9 +117,10 @@ flowchart TD
 
 ## 🚀 راهنمای نصب و اجرای سریع
 
-### 🪟 نصب مستقیم با ابزار رسمی ویندوز (Winget)
+### 🪟 نصب مستقیم با ابزار رسمی ویندوز (Winget) — *(به‌زودی)*
 
-می‌توانید برنامه را مستقیماً از طریق پکیج منیجر رسمی ویندوز نصب و آپدیت کنید:
+> [!NOTE]
+> *(به‌زودی)* پکیج رسمی برنامه به مخزن مایکروسافت ارسال شده و در صف تایید نهایی قرار دارد. پس از تایید نهایی، می‌توانید مستقیماً با دستور زیر آن را نصب و آپدیت کنید:
 
 ```powershell
 winget install AminDenizer.WindscribeUltraAnalyzer

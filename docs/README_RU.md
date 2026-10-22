@@ -69,7 +69,7 @@ flowchart TD
   - **Профили для России:** `A - No Junk Russia Primary`, `B - No Junk Russia Alt`, `C - With Junk Russia Primary`, `D - With Junk Russia Alt`, `G - Popular Russia Website with Junk`.
   - **Профили для Ирана:** `J - Iran Junk Packets`, `I - UAE and Iran Legacy`, `H - Iran 26 May 2026`.
   - **Базовые универсальные профили:** `E - Baseline No Junk`, `F - Baseline With Junk`.
-- **Пользовательский домен SNI (Custom SNI Domain):** Задание собственного SNI для протоколов Stealth и WStunnel (позволяет маскировать соединения под разрешенные домены).
+- **Пользовательский домен SNI (Custom SNI Domain):** Задание собственного SNI для протоколов Stealth и WStunnel для гибкой настройки TLS-заголовков и обхода DPI.
 - **Маршрутизация серверов (Server Routing):** Переключение режимов маршрутизации между `Auto` (0), `Regular` (1) и `Alternate` (2).
 - **Увеличенный TLS-паддинг (Large TLS Padding):** Динамическое управление параметром `ws-stealth-extra-tls-padding` в `windscribe_extra.conf`.
 - **Внутренний DNS (App Internal DNS):** Установка политики DNS (Cloudflare, Google, ControlD, OpenDNS, OS Default) непосредственно в приложении Windscribe.
@@ -115,9 +115,10 @@ flowchart TD
 
 ## 🚀 Установка и быстрый старт
 
-### 🪟 Установка через Windows Package Manager (Winget)
+### 🪟 Установка через Windows Package Manager (Winget) — *(Скоро)*
 
-Вы можете установить и обновлять утилиту напрямую через официальный менеджер пакетов Windows:
+> [!NOTE]
+> *(Скоро)* Официальный пакет отправлен в репозиторий Microsoft и ожидает завершения финальной модерации. После одобрения будет доступна прямая установка и обновление:
 
 ```powershell
 winget install AminDenizer.WindscribeUltraAnalyzer
