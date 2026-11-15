@@ -1050,6 +1050,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    // Background Sync Event Listeners
+    window.runtime.EventsOn("locations_updated", (newLocs) => {
+        logMsg("[Auto-Sync] Received updated locations from Windscribe network.", "log-success");
+        fetchLocations(false);
+    });
+
+    window.runtime.EventsOn("amnezia_updated", (newConfigs) => {
+        logMsg("[Auto-Sync] Received updated Amnezia presets from Windscribe Engine.", "log-success");
+        loadAmneziaConfigs(false);
+    });
+
+    window.runtime.EventsOn("sync_queued", (msg) => {
+        logMsg(`[Sync Queued] ${msg}`, "log-info");
+    });
+
     // Start Button Handler (Starts fresh)
     btnStart.addEventListener("click", () => {
         const config = collectTestConfig(false);

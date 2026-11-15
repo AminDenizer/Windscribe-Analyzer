@@ -304,9 +304,33 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		}
 
 		// Step 1.5: Anti-Flapping / Protocol "Blinking" Stabilization
-		// Wait 2.5s for Wintun/TUN interface and routing table to settle.
-		// If Windscribe helper crashed or DPI blocked the handshake, status flapped.
-		time.Sleep(2500 * time.Millisecond)
+		// Wait 3.5s for Wintun/TUN interface and routing table to settle.
+		sendUpdate(EventUpdate{
+			Message: fmt.Sprintf("[%d/%d] Connected to %s (%s:%d). Stabilizing tunnel interface (3.5s)...", currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port),
+			Status:  "Stabilizing...",
+		})
+		time.Sleep(3500 * time.Millisecond)
+
+		if !o.worker.IsConnected(ctx) {
+			// Protocol flapped/dropped during settling phase: attempt reconnection recovery
+			sendUpdate(EventUpdate{
+				Message: fmt.Sprintf("Tunnel flapped on %s (%s:%d). Attempting reconnection recovery (attempt 2/2)...", targetLoc, task.Protocol, task.Port),
+				Status:  "Reconnecting...",
+			})
+			discFlap, discFlapCancel := context.WithTimeout(context.Background(), 6*time.Second)
+			_ = o.worker.EnsureDisconnected(discFlap)
+			discFlapCancel()
+			time.Sleep(1 * time.Second)
+
+			if retryErr := o.worker.Connect(ctx, targetLoc, task.Protocol, task.Port); retryErr == nil {
+				reconn, retryDur, _ := o.worker.WaitForConnection(ctx, time.Duration(config.Timeout)*time.Second)
+				if reconn {
+					task.Duration += retryDur
+					time.Sleep(3500 * time.Millisecond)
+				}
+			}
+		}
+
 		if !o.worker.IsConnected(ctx) {
 			task.Status = "FLAPPING"
 			o.db.RecordResult(task)
@@ -333,12 +357,18 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		}
 
 		sendUpdate(EventUpdate{
-			Message: fmt.Sprintf("Verifying tunnel integrity and routing to %s (%s)...", task.Country, expectedCode),
+			Message: fmt.Sprintf("Verifying route destination for %s (expected: %s)...", task.Country, expectedCode),
 			Status:  "Verifying...",
 		})
 
 		tunnelOk, egressLoc, leakErr := verifyTunnelDestination(ctx, expectedCode)
-		if leakErr != nil && !tunnelOk {
+		if !tunnelOk {
+			// Quick 2-second retry in case route metric was still applying
+			time.Sleep(2000 * time.Millisecond)
+			tunnelOk, egressLoc, leakErr = verifyTunnelDestination(ctx, expectedCode)
+		}
+
+		if !tunnelOk {
 			task.Status = "ROUTING_LEAK"
 			o.db.RecordResult(task)
 			completedResults = append(completedResults, task)
@@ -346,7 +376,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			o.completedResults = completedResults
 			o.mu.Unlock()
 			sendUpdate(EventUpdate{
-				Message:     fmt.Sprintf("Routing leak detected on %s (%s:%d): traffic bypassed VPN tunnel (%v). Skipping speedtest.", targetLoc, task.Protocol, task.Port, leakErr),
+				Message:     fmt.Sprintf("Route verification failed on %s (%s:%d): %v. Skipping speedtest to prevent false metrics.", targetLoc, task.Protocol, task.Port, leakErr),
 				Status:      "Route Leak",
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,
@@ -360,10 +390,10 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		task.Status = "SUCCESS"
 		locTag := ""
 		if egressLoc != "" {
-			locTag = fmt.Sprintf(" [Egress: %s]", egressLoc)
+			locTag = fmt.Sprintf(" [Exit Node: %s]", egressLoc)
 		}
 		sendUpdate(EventUpdate{
-			Message:     fmt.Sprintf("Connected to %s (%s:%d)%s in %.2fs! Testing metrics...", targetLoc, task.Protocol, task.Port, locTag, duration),
+			Message:     fmt.Sprintf("Connected & verified %s (%s:%d)%s in %.2fs! Testing metrics...", targetLoc, task.Protocol, task.Port, locTag, duration),
 			Status:      "Connected",
 			TestedCount: len(completedResults),
 			TotalCount:  o.totalTasks,
@@ -533,16 +563,25 @@ func (o *Orchestrator) Stop() {
 }
 
 var countryNameToCode = map[string]string{
+	"US Central": "US", "US East": "US", "US West": "US", "United States": "US", "USA": "US",
+	"Canada East": "CA", "Canada West": "CA", "Canada": "CA",
 	"Austria": "AT", "Australia": "AU", "Belgium": "BE", "Bulgaria": "BG",
-	"Canada": "CA", "Switzerland": "CH", "Cyprus": "CY", "Czech Republic": "CZ",
+	"Switzerland": "CH", "Cyprus": "CY", "Czech Republic": "CZ",
 	"Germany": "DE", "Denmark": "DK", "Estonia": "EE", "Spain": "ES",
-	"Finland": "FI", "France": "FR", "United Kingdom": "GB", "Greece": "GR",
+	"Finland": "FI", "France": "FR", "United Kingdom": "GB", "UK": "GB", "Greece": "GR",
 	"Hong Kong": "HK", "Croatia": "HR", "Hungary": "HU", "Ireland": "IE",
 	"Israel": "IL", "India": "IN", "Italy": "IT", "Japan": "JP",
+	"Iceland": "IS", "Latvia": "LV", "Lithuania": "LT", "Luxembourg": "LU",
 	"Moldova": "MD", "Netherlands": "NL", "Norway": "NO", "Poland": "PL",
 	"Portugal": "PT", "Romania": "RO", "Serbia": "RS", "Sweden": "SE",
-	"Singapore": "SG", "Slovakia": "SK", "Turkey": "TR", "Ukraine": "UA",
-	"United States": "US", "South Africa": "ZA",
+	"Singapore": "SG", "Slovakia": "SK", "Slovenia": "SI", "Turkey": "TR", "Ukraine": "UA",
+	"South Africa": "ZA", "Albania": "AL", "Bosnia": "BA", "Georgia": "GE",
+	"Kenya": "KE", "Nigeria": "NG", "Russia": "RU", "New Zealand": "NZ",
+	"Indonesia": "ID", "Malaysia": "MY", "Philippines": "PH", "South Korea": "KR",
+	"Taiwan": "TW", "Thailand": "TH", "United Arab Emirates": "AE", "UAE": "AE", "Vietnam": "VN",
+	"Argentina": "AR", "Brazil": "BR", "Chile": "CL", "Colombia": "CO",
+	"Ecuador": "EC", "El Salvador": "SV", "Guatemala": "GT", "Mexico": "MX",
+	"Panama": "PA", "Paraguay": "PY", "Peru": "PE", "Uruguay": "UY", "North Macedonia": "MK",
 }
 
 // verifyTunnelDestination checks if the VPN interface is truly routing traffic
@@ -589,14 +628,20 @@ func verifyTunnelDestination(ctx context.Context, expectedCountryCode string) (b
 		return false, "", fmt.Errorf("exit location not found in trace")
 	}
 
-	// Domestic Network Route Leak Prevention:
-	// If traffic egresses from local censored countries (Iran, Russia, China) while
-	// testing an overseas destination, the VPN interface is leaking traffic unencrypted.
+	// Strict Destination Match & Leak Prevention:
+	// Only proceed if detected country matches target destination country!
 	expectedUpper := strings.ToUpper(strings.TrimSpace(expectedCountryCode))
-	if (detectedLoc == "IR" && expectedUpper != "IR") ||
-		(detectedLoc == "RU" && expectedUpper != "RU") ||
-		(detectedLoc == "CN" && expectedUpper != "CN") {
-		return false, detectedLoc, fmt.Errorf("local ISP leak detected: egress is %s (expected %s)", detectedLoc, expectedUpper)
+	if expectedUpper != "" {
+		if detectedLoc != expectedUpper {
+			if detectedLoc == "IR" || detectedLoc == "RU" || detectedLoc == "CN" {
+				return false, detectedLoc, fmt.Errorf("local network leak detected: egress is %s instead of %s", detectedLoc, expectedUpper)
+			}
+			return false, detectedLoc, fmt.Errorf("destination country mismatch: egress is %s (expected %s)", detectedLoc, expectedUpper)
+		}
+	} else {
+		if detectedLoc == "IR" || detectedLoc == "RU" || detectedLoc == "CN" {
+			return false, detectedLoc, fmt.Errorf("local network leak detected: egress is %s", detectedLoc)
+		}
 	}
 
 	return true, detectedLoc, nil

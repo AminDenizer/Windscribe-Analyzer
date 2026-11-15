@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	goRuntime "runtime"
 
@@ -46,10 +47,12 @@ var defaultAmneziaConfigs = []AmneziaConfigItem{
 
 // App struct
 type App struct {
-	ctx          context.Context
-	db           *DatabaseManager
-	worker       *WindscribeWorker
-	orchestrator *Orchestrator
+	ctx               context.Context
+	db                *DatabaseManager
+	worker            *WindscribeWorker
+	orchestrator      *Orchestrator
+	pendingOnlineSync bool
+	syncMu            sync.Mutex
 }
 
 // NewApp creates a new App application struct
@@ -80,6 +83,13 @@ func (a *App) startup(ctx context.Context) {
 	if locs, err := a.GetAllLocations(); err == nil && len(locs) > 0 {
 		a.db.SanitizeLegacyRecords(locs)
 	}
+
+	// Ensure local cache files exist beside the app on first run and attempt background refresh
+	go func() {
+		_, _ = a.fetchLocations(false)
+		_, _ = a.fetchAmneziaConfigs(false)
+		a.UpdateOnlineResources()
+	}()
 }
 
 // GetLocations returns history stats to help frontend populate stuff
@@ -135,7 +145,15 @@ func (a *App) GetAllLocations() ([]LocationData, error) {
 
 // RefreshLocations forces online fetch and updates cache
 func (a *App) RefreshLocations() ([]LocationData, error) {
-	return a.fetchLocations(true)
+	locs, err := a.fetchLocations(true)
+	if err != nil {
+		a.pendingOnlineSync = true
+		if a.ctx != nil {
+			runtime.EventsEmit(a.ctx, "sync_queued", "Online resources unreachable. Will auto-sync once a VPN tunnel connects.")
+		}
+		return a.fetchLocations(false)
+	}
+	return locs, nil
 }
 
 func (a *App) fetchLocations(forceOnline bool) ([]LocationData, error) {
@@ -146,6 +164,13 @@ func (a *App) fetchLocations(forceOnline bool) ([]LocationData, error) {
 		if cachedData, err := os.ReadFile(cachePath); err == nil {
 			var cachedLocs []LocationData
 			if err := json.Unmarshal(cachedData, &cachedLocs); err == nil && len(cachedLocs) > 0 {
+				for i := range cachedLocs {
+					if cachedLocs[i].CountryCode == "" {
+						if code, ok := countryNameToCode[cachedLocs[i].Region]; ok {
+							cachedLocs[i].CountryCode = code
+						}
+					}
+				}
 				return cachedLocs, nil
 			}
 		}
@@ -174,7 +199,7 @@ func (a *App) fetchLocations(forceOnline bool) ([]LocationData, error) {
 					}
 				}
 				if len(locs) > 0 {
-					if data, err := json.Marshal(locs); err == nil {
+					if data, err := json.MarshalIndent(locs, "", "  "); err == nil {
 						_ = os.WriteFile(cachePath, data, 0644)
 					}
 					return locs, nil
@@ -187,6 +212,13 @@ func (a *App) fetchLocations(forceOnline bool) ([]LocationData, error) {
 	if cachedData, err := os.ReadFile(cachePath); err == nil {
 		var cachedLocs []LocationData
 		if err := json.Unmarshal(cachedData, &cachedLocs); err == nil && len(cachedLocs) > 0 {
+			for i := range cachedLocs {
+				if cachedLocs[i].CountryCode == "" {
+					if code, ok := countryNameToCode[cachedLocs[i].Region]; ok {
+						cachedLocs[i].CountryCode = code
+					}
+				}
+			}
 			return cachedLocs, nil
 		}
 	}
@@ -201,7 +233,15 @@ func (a *App) GetAmneziaConfigs() ([]AmneziaConfigItem, error) {
 
 // RefreshAmneziaConfigs forces refreshing amnezia configs online
 func (a *App) RefreshAmneziaConfigs() ([]AmneziaConfigItem, error) {
-	return a.fetchAmneziaConfigs(true)
+	configs, err := a.fetchAmneziaConfigs(true)
+	if err != nil {
+		a.pendingOnlineSync = true
+		if a.ctx != nil {
+			runtime.EventsEmit(a.ctx, "sync_queued", "Amnezia presets unreachable. Will auto-sync once a VPN tunnel connects.")
+		}
+		return a.fetchAmneziaConfigs(false)
+	}
+	return configs, nil
 }
 
 func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error) {
@@ -256,7 +296,11 @@ func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error)
 
 // UpdateOnlineResources updates both locations and configs in background once VPN is up
 func (a *App) UpdateOnlineResources() {
-	client := &http.Client{Timeout: 5 * time.Second}
+	a.syncMu.Lock()
+	defer a.syncMu.Unlock()
+
+	// 1. Fetch live locations from Windscribe asset API
+	client := &http.Client{Timeout: 8 * time.Second}
 	resp, err := client.Get("https://assets.windscribe.com/serverlist/mob-v2/1/0")
 	if err == nil {
 		defer resp.Body.Close()
@@ -279,13 +323,41 @@ func (a *App) UpdateOnlineResources() {
 				}
 				if len(locs) > 0 {
 					cachePath := getCachePath("cached_locations.json")
-					if data, err := json.Marshal(locs); err == nil {
+					if data, err := json.MarshalIndent(locs, "", "  "); err == nil {
 						_ = os.WriteFile(cachePath, data, 0644)
+					}
+					if a.ctx != nil {
+						runtime.EventsEmit(a.ctx, "locations_updated", locs)
 					}
 				}
 			}
 		}
 	}
+
+	// 2. Fetch live Amnezia presets from native Windscribe CLI or client
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	if presets, err := a.worker.GetAmneziaPresets(ctx); err == nil && len(presets) > 0 {
+		hasNone := false
+		for _, p := range presets {
+			if strings.ToLower(p.ID) == "none" || strings.Contains(strings.ToLower(p.Name), "disabled") {
+				hasNone = true
+				break
+			}
+		}
+		if !hasNone {
+			presets = append(presets, AmneziaConfigItem{ID: "None", Name: "None (Disabled)"})
+		}
+		cachePath := getCachePath("cached_amnezia_configs.json")
+		if data, err := json.MarshalIndent(presets, "", "  "); err == nil {
+			_ = os.WriteFile(cachePath, data, 0644)
+		}
+		if a.ctx != nil {
+			runtime.EventsEmit(a.ctx, "amnezia_updated", presets)
+		}
+	}
+
+	a.pendingOnlineSync = false
 }
 
 // ExportExcelReport exports all historical test results into a styled Excel file
