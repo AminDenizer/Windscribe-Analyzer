@@ -14,6 +14,28 @@ export namespace main {
 	        this.name = source["name"];
 	    }
 	}
+	export class ClientSettingsSnapshot {
+	    protocolTweaksMode: string;
+	    amneziaConfig: string;
+	    serverRouting: string;
+	    customSni: string;
+	    largeTls: boolean;
+	    internalDns: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClientSettingsSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.protocolTweaksMode = source["protocolTweaksMode"];
+	        this.amneziaConfig = source["amneziaConfig"];
+	        this.serverRouting = source["serverRouting"];
+	        this.customSni = source["customSni"];
+	        this.largeTls = source["largeTls"];
+	        this.internalDns = source["internalDns"];
+	    }
+	}
 	export class LocationData {
 	    location: string;
 	    city: string;

@@ -579,3 +579,120 @@ func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 	}
 	return totalIn, totalOut, found
 }
+
+func readPlatformClientSettings() (*ClientSettingsSnapshot, error) {
+	regKey, err := registry.OpenKey(registry.CURRENT_USER, `Software\Windscribe\Windscribe2`, registry.QUERY_VALUE)
+	if err != nil {
+		return nil, fmt.Errorf("windscribe registry not accessible: %w", err)
+	}
+	defer regKey.Close()
+
+	val, _, err := regKey.GetStringValue("engineSettings")
+	if err != nil {
+		return nil, fmt.Errorf("engineSettings not found in registry: %w", err)
+	}
+
+	data, err := decryptSimpleCrypt(val)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt engineSettings: %w", err)
+	}
+
+	snap := &ClientSettingsSnapshot{
+		ProtocolTweaksMode: "Enabled",
+		ServerRouting:      "Auto",
+		InternalDNS:        "Google",
+	}
+
+	var splitOffset = -1
+	for offset := len(data) - 20; offset >= 0 && offset > len(data)-500; offset-- {
+		pos := offset
+		amnezia, nextPos, ok := decodeQString(data, pos)
+		if !ok {
+			continue
+		}
+		pos = nextPos
+
+		if pos+12 > len(data) {
+			continue
+		}
+		routing := int32(binary.BigEndian.Uint32(data[pos : pos+4]))
+		tweaks := int32(binary.BigEndian.Uint32(data[pos+4 : pos+8]))
+		egress := int32(binary.BigEndian.Uint32(data[pos+8 : pos+12]))
+		if routing < 0 || routing > 2 || tweaks < 0 || tweaks > 2 || egress < 0 || egress > 2 {
+			continue
+		}
+		pos += 12
+
+		sni, nextPos, ok := decodeQString(data, pos)
+		if !ok || nextPos != len(data) {
+			continue
+		}
+
+		splitOffset = offset
+		snap.AmneziaConfig = amnezia
+		snap.CustomSNI = sni
+
+		switch tweaks {
+		case 0:
+			snap.ProtocolTweaksMode = "Auto"
+		case 1:
+			snap.ProtocolTweaksMode = "Enabled"
+		case 2:
+			snap.ProtocolTweaksMode = "Disabled"
+		}
+
+		switch routing {
+		case 1:
+			snap.ServerRouting = "Regular"
+		case 2:
+			snap.ServerRouting = "Alternate"
+		default:
+			snap.ServerRouting = "Auto"
+		}
+		break
+	}
+
+	if splitOffset == -1 {
+		return nil, fmt.Errorf("unrecognized engineSettings structure")
+	}
+
+	if splitOffset >= 10 && data[splitOffset-10] == 1 {
+		snap.LargeTLS = true
+	}
+
+	for i := splitOffset - 150; i <= splitOffset-40; i++ {
+		if i < 0 || i+12 > len(data) {
+			continue
+		}
+		p := int32(binary.BigEndian.Uint32(data[i : i+4]))
+		adapter := int32(binary.BigEndian.Uint32(data[i+4 : i+8]))
+		ovpnLen := binary.BigEndian.Uint32(data[i+8 : i+12])
+		if p >= 0 && p <= 4 && (adapter == 1 || adapter == 2) && ovpnLen == 0xFFFFFFFF {
+			switch p {
+			case 0:
+				snap.InternalDNS = "OS Default"
+			case 1:
+				snap.InternalDNS = "OpenDNS"
+			case 2:
+				snap.InternalDNS = "Cloudflare"
+			case 3:
+				snap.InternalDNS = "Google"
+			case 4:
+				snap.InternalDNS = "Control D"
+			}
+			break
+		}
+	}
+
+	// Also check windscribe_extra.conf for Large TLS
+	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+		extraPath := filepath.Join(localAppData, "Windscribe", "Windscribe2", "windscribe_extra.conf")
+		if content, err := os.ReadFile(extraPath); err == nil {
+			if strings.Contains(string(content), "ws-stealth-extra-tls-padding") {
+				snap.LargeTLS = true
+			}
+		}
+	}
+
+	return snap, nil
+}

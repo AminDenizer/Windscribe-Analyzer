@@ -31,6 +31,16 @@ type AmneziaConfigItem struct {
 	Name string `json:"name"`
 }
 
+// ClientSettingsSnapshot represents current Windscribe client engine settings (read-only)
+type ClientSettingsSnapshot struct {
+	ProtocolTweaksMode string `json:"protocolTweaksMode"`
+	AmneziaConfig      string `json:"amneziaConfig"`
+	ServerRouting      string `json:"serverRouting"`
+	CustomSNI          string `json:"customSni"`
+	LargeTLS           bool   `json:"largeTls"`
+	InternalDNS        string `json:"internalDns"`
+}
+
 var defaultAmneziaConfigs = []AmneziaConfigItem{
 	{ID: "A", Name: "A - No Junk Russia Primary"},
 	{ID: "B", Name: "B - No Junk Russia Alt"},
@@ -42,7 +52,6 @@ var defaultAmneziaConfigs = []AmneziaConfigItem{
 	{ID: "H", Name: "H - Iran 26 May 2026"},
 	{ID: "I", Name: "I - UAE and Iran Legacy"},
 	{ID: "J", Name: "J - Iran Junk Packets"},
-	{ID: "None", Name: "None (Disabled)"},
 }
 
 // App struct
@@ -111,18 +120,18 @@ type WindscribeAPIResponse struct {
 }
 
 func getContinent(code string) string {
-	switch code {
-	case "US", "CA", "MX", "PA":
+	switch strings.ToUpper(strings.TrimSpace(code)) {
+	case "US", "CA", "MX", "PA", "SV", "GT", "CR", "HN", "NI", "BZ", "DO", "PR", "JM", "BS", "TT", "CU":
 		return "North America"
-	case "BR", "CO", "AR", "CL":
+	case "BR", "CO", "AR", "CL", "PY", "PE", "UY", "EC", "VE", "BO", "GY", "SR":
 		return "South America"
-	case "GB", "FR", "DE", "NL", "CH", "NO", "RO", "CZ", "IT", "ES", "SE", "IE", "DK", "PL", "AT", "HU", "BG", "LT", "LV", "EE", "FI", "GR", "PT", "RS", "SK", "SI", "HR", "BA", "CY", "IS", "MD", "MK", "AL", "GE":
+	case "GB", "FR", "DE", "NL", "CH", "NO", "RO", "CZ", "IT", "ES", "SE", "IE", "DK", "PL", "AT", "HU", "BG", "LT", "LV", "EE", "FI", "GR", "PT", "RS", "SK", "SI", "HR", "BA", "CY", "IS", "MD", "MK", "AL", "GE", "BE", "LU", "RU", "UA", "MT", "MC", "AD", "SM", "LI", "BY", "ME", "AM", "AZ":
 		return "Europe"
-	case "JP", "SG", "HK", "KR", "IN", "MY", "ID", "PH", "VN", "TH", "TW", "KH", "AE", "IL", "TR":
+	case "JP", "SG", "HK", "KR", "IN", "MY", "ID", "PH", "VN", "TH", "TW", "KH", "AE", "IL", "TR", "KZ", "UZ", "PK", "BD", "LK", "NP", "MM", "LA", "MN", "QA", "BH", "KW", "OM", "JO", "LB", "SA", "IQ", "IR", "CN":
 		return "Asia"
-	case "AU", "NZ":
+	case "AU", "NZ", "FJ", "PG":
 		return "Oceania"
-	case "ZA", "EG", "KE", "GH":
+	case "ZA", "EG", "KE", "GH", "MA", "TN", "NG", "DZ", "ET", "TZ", "MU", "SN", "AO":
 		return "Africa"
 	case "AQ":
 		return "Antarctica"
@@ -169,6 +178,9 @@ func (a *App) fetchLocations(forceOnline bool) ([]LocationData, error) {
 						if code, ok := countryNameToCode[cachedLocs[i].Region]; ok {
 							cachedLocs[i].CountryCode = code
 						}
+					}
+					if cachedLocs[i].CountryCode != "" {
+						cachedLocs[i].Continent = getContinent(cachedLocs[i].CountryCode)
 					}
 				}
 				return cachedLocs, nil
@@ -251,17 +263,6 @@ func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if presets, err := a.worker.GetAmneziaPresets(ctx); err == nil && len(presets) > 0 {
-		hasNone := false
-		for _, p := range presets {
-			if strings.ToLower(p.ID) == "none" || strings.Contains(strings.ToLower(p.Name), "disabled") {
-				hasNone = true
-				break
-			}
-		}
-		if !hasNone {
-			presets = append(presets, AmneziaConfigItem{ID: "None", Name: "None (Disabled)"})
-		}
-
 		if data, err := json.MarshalIndent(presets, "", "  "); err == nil {
 			_ = os.WriteFile(cachePath, data, 0644)
 		}
@@ -328,16 +329,6 @@ func (a *App) UpdateOnlineResources() {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
 	if presets, err := a.worker.GetAmneziaPresets(ctx); err == nil && len(presets) > 0 {
-		hasNone := false
-		for _, p := range presets {
-			if strings.ToLower(p.ID) == "none" || strings.Contains(strings.ToLower(p.Name), "disabled") {
-				hasNone = true
-				break
-			}
-		}
-		if !hasNone {
-			presets = append(presets, AmneziaConfigItem{ID: "None", Name: "None (Disabled)"})
-		}
 		cachePath := getCachePath("cached_amnezia_configs.json")
 		if data, err := json.MarshalIndent(presets, "", "  "); err == nil {
 			_ = os.WriteFile(cachePath, data, 0644)
@@ -385,4 +376,9 @@ func (a *App) StopTest() {
 // GetOS returns current host operating system (windows, linux, darwin)
 func (a *App) GetOS() string {
 	return goRuntime.GOOS
+}
+
+// ReadClientSettings reads the active Windscribe client settings in read-only mode (explicit user opt-in)
+func (a *App) ReadClientSettings() (*ClientSettingsSnapshot, error) {
+	return readPlatformClientSettings()
 }

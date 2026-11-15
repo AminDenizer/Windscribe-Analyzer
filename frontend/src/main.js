@@ -329,7 +329,6 @@ function updateTweaksState() {
     const tweaksMode = document.getElementById("protocolTweaksMode");
     const amneziaGroup = document.getElementById("amneziaGroup");
     const amneziaSelect = document.getElementById("amneziaConfig");
-    const serverRoutingSelect = document.getElementById("serverRouting");
     const btnRefresh = document.getElementById("btnRefreshAmnezia");
     
     const val = (tweaksMode ? tweaksMode.value : "Enabled").toLowerCase();
@@ -340,7 +339,6 @@ function updateTweaksState() {
     }
     if (amneziaSelect) amneziaSelect.disabled = !isEnabled;
     if (btnRefresh) btnRefresh.disabled = !isEnabled;
-    if (serverRoutingSelect) serverRoutingSelect.disabled = (val === "disabled");
 }
 
 let toastTimeout = null;
@@ -755,15 +753,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const masterInjection = document.getElementById("masterInjection");
-    const injectionBody = document.getElementById("injectionBody");
+    const manualModeBanner = document.getElementById("manualModeBanner");
     if (masterInjection) {
         masterInjection.addEventListener("change", () => {
-            if (injectionBody) {
-                if (masterInjection.checked) {
-                    injectionBody.classList.remove("disabled-panel");
-                } else {
-                    injectionBody.classList.add("disabled-panel");
+            if (manualModeBanner) {
+                manualModeBanner.style.display = masterInjection.checked ? "none" : "block";
+            }
+        });
+    }
+
+    const btnReadClientSettings = document.getElementById("btnReadClientSettings");
+    if (btnReadClientSettings) {
+        btnReadClientSettings.addEventListener("click", async () => {
+            btnReadClientSettings.disabled = true;
+            const origText = btnReadClientSettings.innerText;
+            btnReadClientSettings.innerText = "⏳ Reading Windscribe...";
+            try {
+                const snap = await window.go.main.App.ReadClientSettings();
+                if (snap) {
+                    if (snap.protocolTweaksMode && document.getElementById("protocolTweaksMode")) {
+                        document.getElementById("protocolTweaksMode").value = snap.protocolTweaksMode;
+                        updateTweaksState();
+                    }
+                    if (snap.amneziaConfig && document.getElementById("amneziaConfig")) {
+                        document.getElementById("amneziaConfig").value = snap.amneziaConfig;
+                    }
+                    if (snap.serverRouting && document.getElementById("serverRouting")) {
+                        document.getElementById("serverRouting").value = snap.serverRouting;
+                    }
+                    if (document.getElementById("customSni")) {
+                        document.getElementById("customSni").value = snap.customSni || "";
+                    }
+                    if (document.getElementById("largeTls")) {
+                        document.getElementById("largeTls").checked = !!snap.largeTls;
+                    }
+                    if (snap.internalDns && document.getElementById("internalDns")) {
+                        document.getElementById("internalDns").value = snap.internalDns;
+                    }
+                    logMsg(`Loaded active Windscribe settings (Tweaks: ${snap.protocolTweaksMode}, Preset: ${snap.amneziaConfig || "-"}, Routing: ${snap.serverRouting}, DNS: ${snap.internalDns}).`, "log-success");
                 }
+            } catch (err) {
+                logMsg(`Could not read Windscribe client settings: ${err}`, "log-error");
+            } finally {
+                btnReadClientSettings.disabled = false;
+                btnReadClientSettings.innerText = origText;
             }
         });
     }

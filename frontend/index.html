@@ -59,7 +59,7 @@
                         <span>🛡️ Anti-Censorship</span>
                     </div>
 
-                    <div class="form-group toggle-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 10px;">
+                    <div class="form-group toggle-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 12px;">
                         <label for="masterInjection" style="font-weight: 700; color: #58a6ff;">Live Engine Injection</label>
                         <label class="switch">
                             <input type="checkbox" id="masterInjection" checked>
@@ -67,19 +67,24 @@
                         </label>
                     </div>
 
-                    <div id="injectionBody">
-                        <div class="form-group">
-                            <label for="protocolTweaksMode">Protocol Tweaks</label>
+                    <div id="manualModeBanner" style="display: none; margin-bottom: 12px; padding: 8px 10px; border-radius: 6px; background: rgba(210, 153, 34, 0.1); border: 1px solid rgba(210, 153, 34, 0.3); font-size: 11px; color: #d29922; line-height: 1.4;">
+                        <div style="margin-bottom: 6px;"><strong>Manual Mode:</strong> Client settings won't be overwritten. Fields below are saved to reports as metadata.</div>
+                        <button type="button" id="btnReadClientSettings" class="small-btn" style="width: 100%; padding: 5px 8px; background: rgba(56, 139, 253, 0.15); border: 1px solid rgba(56, 139, 253, 0.4); color: #58a6ff; border-radius: 5px; cursor: pointer; font-weight: 600;">📥 Read Active Client Settings</button>
+                    </div>
+
+                    <div id="injectionBody" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="protocolTweaksMode" style="margin-bottom: 6px; display: block;">Protocol Tweaks</label>
                             <select id="protocolTweaksMode" class="modern-select">
                                 <option value="Enabled" selected>Enabled</option>
                                 <option value="Auto">Auto</option>
                                 <option value="Disabled">Disabled</option>
                             </select>
-                            <div style="font-size: 11px; color: #8b949e; margin-top: 4px; line-height: 1.3;">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
+                            <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
                         </div>
 
-                        <div class="form-group" id="amneziaGroup">
-                            <label style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="form-group" id="amneziaGroup" style="margin-bottom: 0;">
+                            <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                                 Amnezia Config
                                 <button id="btnRefreshAmnezia" class="icon-btn sync-btn" title="Refresh Amnezia Configs">
                                     <svg class="sync-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -98,13 +103,12 @@
                                 <option value="E - Baseline No Junk">E - Baseline No Junk</option>
                                 <option value="F - Baseline With Junk">F - Baseline With Junk</option>
                                 <option value="G - Popular Russia Website with Junk">G - Popular Russia Website with Junk</option>
-                                <option value="None">None (Disabled)</option>
                             </select>
-                            <div style="font-size: 11px; color: #8b949e; margin-top: 4px; line-height: 1.3;">Obfuscation presets applied to WireGuard, OpenVPN, and Stealth.</div>
+                            <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;">Obfuscation presets applied to WireGuard, OpenVPN, and Stealth.</div>
                         </div>
 
-                        <div class="form-group">
-                            <label>Server Routing</label>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="margin-bottom: 6px; display: block;">Server Routing</label>
                             <select id="serverRouting" class="modern-select">
                                 <option value="Auto">Auto</option>
                                 <option value="Regular" selected>Regular</option>
@@ -112,7 +116,7 @@
                             </select>
                         </div>
 
-                        <div class="form-group toggle-row">
+                        <div class="form-group toggle-row" style="margin-top: 4px; margin-bottom: 4px; padding: 4px 0;">
                             <label for="largeTls">Large TLS Padding</label>
                             <label class="switch">
                                 <input type="checkbox" id="largeTls">
@@ -120,24 +124,23 @@
                             </label>
                         </div>
 
-                        <div class="form-group" id="sniContainer">
-                            <label>Custom SNI Domain</label>
-                            <input type="text" id="customSni" class="modern-input" placeholder="e.g. example.com (optional hint)">
-                            <small class="hint-text">Applies to Stealth and Wstunnel protocols only.</small>
+                        <div class="form-group" id="sniContainer" style="margin-bottom: 0;">
+                            <label style="margin-bottom: 6px; display: block;">Custom SNI Domain</label>
+                            <input type="text" id="customSni" class="modern-input" placeholder="example.com (optional)">
+                            <small class="hint-text" style="display: block; margin-top: 6px;">Applies to Stealth and Wstunnel protocols only.</small>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="margin-bottom: 6px; display: block;">Internal DNS</label>
+                            <select id="internalDns" class="modern-select">
+                                <option value="Google">Google (8.8.8.8)</option>
+                                <option value="OS Default">OS Default</option>
+                                <option value="Cloudflare">Cloudflare (1.1.1.1)</option>
+                                <option value="Control D">Control D</option>
+                                <option value="OpenDNS">OpenDNS</option>
+                            </select>
                         </div>
                     </div>
-                </div>
-
-                <!-- Network Settings -->
-                <div class="form-group">
-                    <label>Internal DNS</label>
-                    <select id="internalDns" class="modern-select">
-                        <option value="Google">Google (8.8.8.8)</option>
-                        <option value="OS Default">OS Default</option>
-                        <option value="Cloudflare">Cloudflare (1.1.1.1)</option>
-                        <option value="Control D">Control D</option>
-                        <option value="OpenDNS">OpenDNS</option>
-                    </select>
                 </div>
 
                 <div class="form-group">
@@ -195,7 +198,7 @@
                             <span class="sub-label">Wait Speed</span>
                             <div class="stepper-box">
                                 <button type="button" class="step-btn" data-step="down" data-target="speedWait">−</button>
-                                <input type="number" id="speedWait" class="modern-input stepper-input" value="3" min="1" max="30">
+                                <input type="number" id="speedWait" class="modern-input stepper-input" value="5" min="1" max="30">
                                 <button type="button" class="step-btn" data-step="up" data-target="speedWait">+</button>
                             </div>
                         </div>
@@ -298,7 +301,7 @@
             <div class="card log-card">
                 <div class="log-header">
                     <div class="log-tabs">
-                        <button class="tab-btn active" id="tabLiveTable" type="button">🟢 Connected (<span id="connectedBadge" class="connected-badge">0</span>)</button>
+                        <button class="tab-btn active" id="tabLiveTable" type="button">⚡ Verified Nodes (<span id="connectedBadge" class="connected-badge">0</span>)</button>
                         <button class="tab-btn" id="tabLiveConsole" type="button">🖥️ Live Console</button>
                     </div>
                     <button class="small-btn" id="btnClearLogs" type="button">Clear</button>

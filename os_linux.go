@@ -317,3 +317,64 @@ func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 	}
 	return totalIn, totalOut, found
 }
+
+func readPlatformClientSettings() (*ClientSettingsSnapshot, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	confPath := filepath.Join(homeDir, ".config", "Windscribe", "windscribe_cli.conf")
+	data, err := os.ReadFile(confPath)
+	if err != nil {
+		return nil, fmt.Errorf("windscribe_cli.conf not readable: %w", err)
+	}
+
+	snap := &ClientSettingsSnapshot{
+		ProtocolTweaksMode: "Enabled",
+		ServerRouting:      "Auto",
+		InternalDNS:        "Google",
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		k := strings.TrimSpace(parts[0])
+		v := strings.TrimSpace(parts[1])
+		switch k {
+		case "ProtocolTweaksMethod":
+			switch v {
+			case "0":
+				snap.ProtocolTweaksMode = "Auto"
+			case "1":
+				snap.ProtocolTweaksMode = "Enabled"
+			case "2":
+				snap.ProtocolTweaksMode = "Disabled"
+			}
+		case "AmneziawgPreset":
+			snap.AmneziaConfig = v
+		case "CustomSniDomain":
+			snap.CustomSNI = v
+		case "ServerRoutingMethod":
+			switch v {
+			case "1":
+				snap.ServerRouting = "Regular"
+			case "2":
+				snap.ServerRouting = "Alternate"
+			default:
+				snap.ServerRouting = "Auto"
+			}
+		}
+	}
+
+	extraPath := filepath.Join(homeDir, ".config", "Windscribe", "Windscribe2", "windscribe_extra.conf")
+	if extraData, err := os.ReadFile(extraPath); err == nil {
+		if strings.Contains(string(extraData), "ws-stealth-extra-tls-padding") {
+			snap.LargeTLS = true
+		}
+	}
+
+	return snap, nil
+}

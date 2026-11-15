@@ -92,3 +92,7 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 	return 0, 0, false
 }
+
+func readPlatformClientSettings() (*ClientSettingsSnapshot, error) {
+	return nil, fmt.Errorf("reading client settings is not yet supported on macOS")
+}

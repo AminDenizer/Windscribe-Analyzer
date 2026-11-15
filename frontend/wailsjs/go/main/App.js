@@ -26,6 +26,10 @@ export function OpenExcelFile(arg1) {
   return window['go']['main']['App']['OpenExcelFile'](arg1);
 }
 
+export function ReadClientSettings() {
+  return window['go']['main']['App']['ReadClientSettings']();
+}
+
 export function RefreshAmneziaConfigs() {
   return window['go']['main']['App']['RefreshAmneziaConfigs']();
 }
