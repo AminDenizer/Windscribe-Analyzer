@@ -274,9 +274,9 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		targetRouting = 0
 	}
 
-	targetSni := strings.TrimSpace(config.CustomSNI)
-	if targetSni == "example.com" || targetSni == "-" || !hasSniProtocol {
-		targetSni = ""
+	userSni := strings.TrimSpace(config.CustomSNI)
+	if userSni == "example.com" || userSni == "-" || !hasSniProtocol {
+		userSni = ""
 	}
 
 	// Large TLS in engineSettings (isAPIAntiCensorship at splitOffset - 10)
@@ -366,10 +366,16 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		return nil
 	}
 
-	// User rule: If SNI is left empty in our UI, do NOT erase the user's manual SNI!
-	// Preserve whatever SNI is already present in the Windscribe engine.
-	if targetSni == "" {
-		targetSni = currentSni
+	// Smart SNI Matching & Zero-Redundant-Override:
+	// If userSni is empty: preserve current engine SNI (don't erase manual config).
+	// If userSni matches currentSni: keep it as is without triggering registry write/restart.
+	// Only if userSni differs from currentSni: inject the new SNI.
+	targetSni := currentSni
+	if userSni != "" && userSni != currentSni {
+		targetSni = userSni
+		logger(fmt.Sprintf("SNI difference detected: Updating Windscribe SNI from %q to %q.", currentSni, userSni))
+	} else if userSni != "" && userSni == currentSni {
+		logger(fmt.Sprintf("SNI already matches Windscribe engine (%q), skipping redundant override.", currentSni))
 	}
 
 	// Current AntiCensorship / Large TLS setting in engineSettings

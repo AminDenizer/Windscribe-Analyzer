@@ -307,16 +307,54 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		initialIn, initialOut, adapterFound := getPlatformWindscribeTraffic()
 
 		sendUpdate(EventUpdate{
-			Message: fmt.Sprintf("[%d/%d] Handshake connected on %s (%s:%d). Monitoring virtual adapter packet flow (up to 60s)...",
+			Message: fmt.Sprintf("[%d/%d] Handshake reported on %s (%s:%d). Monitoring virtual adapter traffic flow (up to 60s, target: 500 KB)...",
 				currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port),
 			Status:  "Stabilizing...",
 		})
 
 		startTime := time.Now()
 		maxStabilizeTime := 60 * time.Second
-		minBytesThreshold := uint64(20 * 1024) // 20 KB threshold per real-world benchmarks
+		minBytesThreshold := uint64(500 * 1024) // 500 KB payload threshold per user benchmark
 		isStable := false
 		lastLogTime := time.Now()
+		windscribeReconnecting := false
+
+		// Launch background payload downloader to stimulate real packet flow through the adapter
+		probeCtx, cancelProbe := context.WithCancel(ctx)
+		defer cancelProbe()
+
+		go func() {
+			client := &http.Client{Timeout: 5 * time.Second}
+			for {
+				select {
+				case <-probeCtx.Done():
+					return
+				default:
+				}
+
+				// Attempt 500KB test payload download chunk via Cloudflare CDN
+				resp, err := client.Get("https://speed.cloudflare.com/__down?bytes=500000")
+				if err == nil && resp != nil {
+					_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 512*1024))
+					_ = resp.Body.Close()
+					return
+				}
+
+				// Fallback stimulus calls if CDN is blocked
+				for i := 0; i < 3; i++ {
+					if r, e := client.Get("https://1.1.1.1/cdn-cgi/trace"); e == nil && r != nil {
+						_, _ = io.Copy(io.Discard, r.Body)
+						_ = r.Body.Close()
+					}
+				}
+
+				select {
+				case <-probeCtx.Done():
+					return
+				case <-time.After(2 * time.Second):
+				}
+			}
+		}()
 
 		for time.Since(startTime) < maxStabilizeTime {
 			select {
@@ -329,9 +367,15 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				break
 			}
 
-			// 1. Verify CLI status is still CONNECTED
-			if !o.worker.IsConnected(ctx) {
-				break
+			// 1. Verify Windscribe CLI status: detect if Windscribe dropped and entered internal reconnect loop
+			statusOut, errStatus := o.worker.RunCLI(ctx, "status")
+			if errStatus == nil {
+				upperStatus := strings.ToUpper(statusOut)
+				if strings.Contains(upperStatus, "CONNECTING") {
+					windscribeReconnecting = true
+				} else if strings.Contains(upperStatus, "DISCONNECTED") {
+					break
+				}
 			}
 
 			curIn, curOut, isUp := getPlatformWindscribeTraffic()
@@ -343,11 +387,12 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				outDiff = curOut - initialOut
 			}
 
-			// 2. Check if virtual adapter received sufficient packets/bytes
-			if adapterFound && isUp && (inDiff >= minBytesThreshold || (inDiff >= 10*1024 && outDiff >= 5*1024)) {
+			// 2. Check if virtual adapter received >= 500 KB of payload traffic
+			if adapterFound && isUp && inDiff >= minBytesThreshold {
 				isStable = true
+				cancelProbe()
 				sendUpdate(EventUpdate{
-					Message: fmt.Sprintf("Tunnel stabilized in %.1fs (Virtual adapter traffic: ↓%.1f KB / ↑%.1f KB).",
+					Message: fmt.Sprintf("Tunnel stabilized in %.1fs (Virtual adapter traffic: ↓%.1f KB / ↑%.1f KB passed 500 KB threshold).",
 						time.Since(startTime).Seconds(), float64(inDiff)/1024, float64(outDiff)/1024),
 					Status: "Stabilized",
 				})
@@ -358,28 +403,23 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			if time.Since(lastLogTime) >= 3*time.Second {
 				lastLogTime = time.Now()
 				elapsedSec := int(time.Since(startTime).Seconds())
+				statusHint := ""
+				if windscribeReconnecting {
+					statusHint = " [Windscribe retrying internally]"
+				}
 				if adapterFound {
 					sendUpdate(EventUpdate{
-						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00) — Virtual adapter: ↓%.1f KB / ↑%.1f KB...",
-							currentTested, o.totalTasks, targetLoc, elapsedSec, float64(inDiff)/1024, float64(outDiff)/1024),
+						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00)%s — Virtual adapter: ↓%.1f KB / 500 KB...",
+							currentTested, o.totalTasks, targetLoc, elapsedSec, statusHint, float64(inDiff)/1024),
 						Status: "Stabilizing...",
 					})
 				} else {
 					sendUpdate(EventUpdate{
-						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00)...",
-							currentTested, o.totalTasks, targetLoc, elapsedSec),
+						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00)%s...",
+							currentTested, o.totalTasks, targetLoc, elapsedSec, statusHint),
 						Status: "Stabilizing...",
 					})
 				}
-
-				// Send lightweight stimulus packet across tunnel to provoke RX/TX activity
-				go func() {
-					client := &http.Client{Timeout: 2 * time.Second}
-					resp, _ := client.Get("http://1.1.1.1/cdn-cgi/trace")
-					if resp != nil {
-						_ = resp.Body.Close()
-					}
-				}()
 			}
 
 			// Fallback if adapter statistics are not exposed by OS (e.g. locked down permissions)
@@ -390,12 +430,14 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				}
 				if ok, _, _ := verifyTunnelDestination(ctx, expectedCode); ok {
 					isStable = true
+					cancelProbe()
 					break
 				}
 			}
 		}
+		cancelProbe()
 
-		// If adapter didn't stabilize within 60s or connection dropped:
+		// If adapter didn't reach 500 KB within 60s or connection dropped:
 		if !isStable || !o.worker.IsConnected(ctx) {
 			task.Status = "FLAPPING"
 			o.db.RecordResult(task)
@@ -404,7 +446,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			o.completedResults = completedResults
 			o.mu.Unlock()
 			sendUpdate(EventUpdate{
-				Message:     fmt.Sprintf("Tunnel stalled on %s (%s:%d): virtual adapter packet flow did not rise (< 20 KB after 60s). Stuck in blinking phase. Disconnecting cleanly.", targetLoc, task.Protocol, task.Port),
+				Message:     fmt.Sprintf("Tunnel stalled on %s (%s:%d): virtual adapter traffic did not reach 500 KB within 60s (stuck in blinking/reconnect phase). Disconnecting cleanly.", targetLoc, task.Protocol, task.Port),
 				Status:      "Flapping",
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,

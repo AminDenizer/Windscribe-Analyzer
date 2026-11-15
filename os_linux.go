@@ -127,9 +127,9 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		targetRouting = "0"
 	}
 
-	targetSni := strings.TrimSpace(config.CustomSNI)
-	if targetSni == "example.com" || targetSni == "-" || !hasSniProtocol {
-		targetSni = ""
+	userSni := strings.TrimSpace(config.CustomSNI)
+	if userSni == "example.com" || userSni == "-" || !hasSniProtocol {
+		userSni = ""
 	}
 
 	targetDnsPolicy := "Google"
@@ -155,15 +155,22 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		}
 	}
 
-	// User rule: If SNI is left empty in UI, preserve existing configured SNI
-	if targetSni == "" {
-		for _, line := range lines {
-			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "CustomSniDomain=") {
-				targetSni = strings.TrimPrefix(trimmed, "CustomSniDomain=")
-				break
-			}
+	// Smart SNI Matching & Zero-Redundant-Override:
+	currentSni := ""
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "CustomSniDomain=") {
+			currentSni = strings.TrimPrefix(trimmed, "CustomSniDomain=")
+			break
 		}
+	}
+
+	targetSni := currentSni
+	if userSni != "" && userSni != currentSni {
+		targetSni = userSni
+		logger(fmt.Sprintf("SNI difference detected: Updating windscribe_cli.conf SNI from %q to %q.", currentSni, userSni))
+	} else if userSni != "" && userSni == currentSni {
+		logger(fmt.Sprintf("SNI already matches configuration (%q), skipping redundant override.", currentSni))
 	}
 
 	// Sections to manage
