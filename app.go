@@ -247,18 +247,8 @@ func (a *App) RefreshAmneziaConfigs() ([]AmneziaConfigItem, error) {
 func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error) {
 	cachePath := getCachePath("cached_amnezia_configs.json")
 
-	// 1. If not forcing online, try reading cache first
-	if !forceOnline {
-		if data, err := os.ReadFile(cachePath); err == nil {
-			var cached []AmneziaConfigItem
-			if err := json.Unmarshal(data, &cached); err == nil && len(cached) > 0 {
-				return cached, nil
-			}
-		}
-	}
-
-	// 2. Try fetching live presets directly from native Windscribe CLI
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	// 1. Always attempt to fetch live presets directly from local Windscribe CLI first
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if presets, err := a.worker.GetAmneziaPresets(ctx); err == nil && len(presets) > 0 {
 		hasNone := false
@@ -278,7 +268,7 @@ func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error)
 		return presets, nil
 	}
 
-	// 3. Fallback to cached file if available
+	// 2. Fallback to cached file if available
 	if data, err := os.ReadFile(cachePath); err == nil {
 		var cached []AmneziaConfigItem
 		if err := json.Unmarshal(data, &cached); err == nil && len(cached) > 0 {
@@ -286,7 +276,7 @@ func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error)
 		}
 	}
 
-	// 4. Default baseline presets and persist cache snapshot
+	// 3. Fallback to defaults
 	if data, err := json.MarshalIndent(defaultAmneziaConfigs, "", "  "); err == nil {
 		_ = os.WriteFile(cachePath, data, 0644)
 	}

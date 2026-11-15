@@ -133,21 +133,30 @@ func GenerateExcelReport(results []TestResult, exportPath string) (string, error
 			ispStr = "Default / Direct"
 		}
 		tweaksStr := "Disabled"
-		if r.ProtocolTweaks {
+		if r.Protocol == "wstunnel" || r.Protocol == "ikev2" {
+			tweaksStr = "-"
+		} else if r.ProtocolTweaks {
 			tweaksStr = "Enabled"
 		}
+
 		tlsStr := "No"
-		if r.LargeTLS {
+		if r.Protocol != "stealth" && r.Protocol != "wstunnel" {
+			tlsStr = "-"
+		} else if r.LargeTLS {
 			tlsStr = "Yes"
 		}
+
 		sniStr := r.CustomSNI
 		if r.Protocol != "stealth" && r.Protocol != "wstunnel" {
 			sniStr = "-"
 		} else if sniStr == "" {
 			sniStr = "-"
 		}
+
 		amneziaStr := r.AntiCensorshipMode
-		if !r.ProtocolTweaks {
+		if r.Protocol == "wstunnel" || r.Protocol == "ikev2" {
+			amneziaStr = "-"
+		} else if !r.ProtocolTweaks {
 			amneziaStr = "Disabled"
 		} else if amneziaStr == "" || amneziaStr == "true" {
 			amneziaStr = "Default"

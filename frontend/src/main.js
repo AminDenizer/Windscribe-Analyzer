@@ -407,10 +407,12 @@ function appendConnectedRow(item) {
     const downVal = item.download > 0 ? `${item.download.toFixed(2)} Mbps` : "--";
     const upVal = item.upload > 0 ? `${item.upload.toFixed(2)} Mbps` : (item.upload === 0 ? "0.00 Mbps" : "--");
     const timeVal = item.timestamp ? (item.timestamp.split(" ")[1] || item.timestamp) : new Date().toLocaleTimeString();
+    const presetVal = item.antiCensorshipMode && item.antiCensorshipMode !== "-" && item.antiCensorshipMode !== "None" ? item.antiCensorshipMode : "-";
 
     row.innerHTML = `
         <td class="cell-loc"><span>${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || item.location || "")}</span></td>
         <td class="cell-proto">${escapeHtml(item.protocol)}:${item.port}</td>
+        <td class="cell-preset" style="color:#79c0ff; font-size:0.75rem;">${escapeHtml(presetVal)}</td>
         <td class="cell-ping">${pingVal}</td>
         <td class="cell-speed">${downVal}</td>
         <td class="cell-speed" style="color:#d2a8ff;">${upVal}</td>
