@@ -217,10 +217,14 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	}
 
 	// Protocol compatibility analysis
+	hasWireguard := false
 	hasTweaksProtocol := false
 	hasSniProtocol := false
 	for proto := range config.ProtocolPorts {
 		p := strings.ToLower(proto)
+		if p == "wireguard" {
+			hasWireguard = true
+		}
 		if p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth" {
 			hasTweaksProtocol = true
 		}
@@ -257,11 +261,18 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		targetTweaks = int32(2) // Disabled
 		targetAmnezia = ""
 		if !hasTweaksProtocol {
-			logger("Protocol Tweaks: Not supported by selected protocols (wstunnel/ikev2). Suppressing Amnezia injection.")
+			logger("Protocol Tweaks: Not supported by selected protocols (wstunnel/ikev2). Suppressing tweaks and Amnezia injection.")
 		}
 	} else if tweakMode == "auto" {
 		targetTweaks = int32(0) // Auto: Windscribe handles tweaks internally
 		targetAmnezia = ""      // Suppress custom preset in Auto mode
+	}
+
+	// AmneziaWG presets specifically modify WireGuard packet headers/junk (Jc, Jmin, Jmax, S1, S2, H1..H4).
+	// If WireGuard is not among the selected protocols, do not inject AmneziaWG preset.
+	if !hasWireguard && targetAmnezia != "" {
+		logger("Amnezia Presets: Selected protocols support native Protocol Tweaks, but AmneziaWG presets are WireGuard-specific. Suppressing Amnezia preset injection.")
+		targetAmnezia = ""
 	}
 
 	targetRouting := int32(0) // Auto

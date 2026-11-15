@@ -142,24 +142,32 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					continue
 				}
 				for _, port := range portsToTest {
-					amneziaMode := config.AmneziaConfig
-					if !config.ProtocolTweaks {
-						amneziaMode = "Disabled"
-					} else if amneziaMode == "" {
-						amneziaMode = "None"
+					p := strings.ToLower(protocol)
+					isTweaksSupported := (p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth")
+					isAmneziaSupported := (p == "wireguard")
+
+					taskTweaks := config.ProtocolTweaks && isTweaksSupported
+
+					taskAmnezia := "-"
+					if isAmneziaSupported && config.ProtocolTweaks {
+						if config.AmneziaConfig != "" && config.AmneziaConfig != "None (Disabled)" && config.AmneziaConfig != "Disabled" && config.AmneziaConfig != "None" {
+							taskAmnezia = config.AmneziaConfig
+						} else {
+							taskAmnezia = "None"
+						}
+					} else if isTweaksSupported && config.ProtocolTweaks {
+						taskAmnezia = "Native"
 					}
 
 					sni := config.CustomSNI
-					if protocol != "stealth" && protocol != "wstunnel" {
+					if p != "stealth" && p != "wstunnel" {
 						sni = "-"
 					} else if sni == "" {
 						sni = "-"
 					}
 
 					serverRouting := config.ServerRouting
-					if !config.ProtocolTweaks {
-						serverRouting = "-"
-					} else if serverRouting == "" {
+					if serverRouting == "" {
 						serverRouting = "Auto"
 					}
 
@@ -172,11 +180,11 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 						Continent:          loc.Continent,
 						Protocol:           protocol,
 						Port:               port,
-						ProtocolTweaks:     config.ProtocolTweaks,
-						AntiCensorshipMode: amneziaMode,
+						ProtocolTweaks:     taskTweaks,
+						AntiCensorshipMode: taskAmnezia,
 						ServerRouting:      serverRouting,
 						CustomSNI:          sni,
-						LargeTLS:           config.LargeTLS,
+						LargeTLS:           config.LargeTLS && (p == "stealth" || p == "wstunnel"),
 						InternalDNS:        config.InternalDNS,
 						ISP:                ispName,
 					})
