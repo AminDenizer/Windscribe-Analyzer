@@ -741,19 +741,10 @@ func verifyTunnelDestination(ctx context.Context, expectedCountryCode string) (b
 	}
 
 	// Strict Destination Match & Leak Prevention:
-	// Only proceed if detected country matches target destination country!
+	// Only proceed if detected country strictly matches target destination country (no hardcoded country list).
 	expectedUpper := strings.ToUpper(strings.TrimSpace(expectedCountryCode))
-	if expectedUpper != "" {
-		if detectedLoc != expectedUpper {
-			if detectedLoc == "IR" || detectedLoc == "RU" || detectedLoc == "CN" {
-				return false, detectedLoc, fmt.Errorf("local network leak detected: egress is %s instead of %s", detectedLoc, expectedUpper)
-			}
-			return false, detectedLoc, fmt.Errorf("destination country mismatch: egress is %s (expected %s)", detectedLoc, expectedUpper)
-		}
-	} else {
-		if detectedLoc == "IR" || detectedLoc == "RU" || detectedLoc == "CN" {
-			return false, detectedLoc, fmt.Errorf("local network leak detected: egress is %s", detectedLoc)
-		}
+	if expectedUpper != "" && detectedLoc != expectedUpper {
+		return false, detectedLoc, fmt.Errorf("route leak / destination mismatch: egress is %s (expected %s)", detectedLoc, expectedUpper)
 	}
 
 	return true, detectedLoc, nil

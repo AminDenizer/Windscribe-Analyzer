@@ -18,6 +18,7 @@ export namespace main {
 	    location: string;
 	    city: string;
 	    region: string;
+	    countryCode: string;
 	    continent: string;
 	    display: string;
 	
@@ -30,6 +31,7 @@ export namespace main {
 	        this.location = source["location"];
 	        this.city = source["city"];
 	        this.region = source["region"];
+	        this.countryCode = source["countryCode"];
 	        this.continent = source["continent"];
 	        this.display = source["display"];
 	    }
@@ -37,6 +39,8 @@ export namespace main {
 	export class TestConfig {
 	    selectedLocations: LocationData[];
 	    protocolPorts: Record<string, Array<number>>;
+	    masterInjection: boolean;
+	    protocolTweaksMode: string;
 	    protocolTweaks: boolean;
 	    amneziaConfig: string;
 	    serverRouting: string;
@@ -60,6 +64,8 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.selectedLocations = this.convertValues(source["selectedLocations"], LocationData);
 	        this.protocolPorts = source["protocolPorts"];
+	        this.masterInjection = source["masterInjection"];
+	        this.protocolTweaksMode = source["protocolTweaksMode"];
 	        this.protocolTweaks = source["protocolTweaks"];
 	        this.amneziaConfig = source["amneziaConfig"];
 	        this.serverRouting = source["serverRouting"];
@@ -99,6 +105,7 @@ export namespace main {
 	    location: string;
 	    city: string;
 	    country: string;
+	    countryCode: string;
 	    continent: string;
 	    protocol: string;
 	    port: number;
@@ -128,6 +135,7 @@ export namespace main {
 	        this.location = source["location"];
 	        this.city = source["city"];
 	        this.country = source["country"];
+	        this.countryCode = source["countryCode"];
 	        this.continent = source["continent"];
 	        this.protocol = source["protocol"];
 	        this.port = source["port"];
