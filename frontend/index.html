@@ -84,14 +84,14 @@
                         </div>
 
                         <div class="form-group" id="amneziaGroup" style="margin-bottom: 0;">
-                            <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                                Amnezia Config
-                                <button id="btnRefreshAmnezia" class="icon-btn sync-btn" title="Refresh Amnezia Configs">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                                <label for="amneziaConfig" style="margin-bottom: 0;">Amnezia Config</label>
+                                <button id="btnRefreshAmnezia" type="button" class="icon-btn sync-btn" title="Refresh Amnezia Configs">
                                     <svg class="sync-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                                     </svg>
                                 </button>
-                            </label>
+                            </div>
                             <select id="amneziaConfig" class="modern-select">
                                 <option value="J - Iran Junk Packets">J - Iran Junk Packets</option>
                                 <option value="I - UAE and Iran Legacy">I - UAE and Iran Legacy</option>
@@ -153,18 +153,18 @@
                 </div>
                 
                 <div class="form-group" id="locationsWrapper">
-                    <label style="display:flex; justify-content:space-between; align-items:center;">
-                        Locations 
-                        <div style="display:flex; gap:4px;">
-                            <button id="btnSelectAllLocs" class="small-btn">All</button> 
-                            <button id="btnClearLocs" class="small-btn">Clear</button>
-                            <button id="btnRefreshLocs" class="icon-btn sync-btn" title="Refresh Locations from Online API">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                        <label style="margin-bottom: 0;">Locations</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <button id="btnSelectAllLocs" type="button" class="small-btn">All</button> 
+                            <button id="btnClearLocs" type="button" class="small-btn">Clear</button>
+                            <button id="btnRefreshLocs" type="button" class="icon-btn sync-btn" title="Refresh Locations from Online API">
                                 <svg class="sync-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                                 </svg>
                             </button>
                         </div>
-                    </label>
+                    </div>
                     <input type="text" id="locSearch" class="modern-input search-box" placeholder="Search country, city, server...">
                     <div class="scroll-list" id="locationTree">
                         <div style="padding:10px; color:#888;">Loading locations...</div>
@@ -301,12 +301,13 @@
             <div class="card log-card">
                 <div class="log-header">
                     <div class="log-tabs">
-                        <button class="tab-btn active" id="tabLiveTable" type="button">⚡ Verified Nodes (<span id="connectedBadge" class="connected-badge">0</span>)</button>
-                        <button class="tab-btn" id="tabLiveConsole" type="button">🖥️ Live Console</button>
+                        <button class="tab-btn active" id="tabLiveConsole" type="button">🖥️ Live Console</button>
+                        <button class="tab-btn" id="tabLiveTable" type="button">⚡ Verified Nodes (<span id="connectedBadge" class="connected-badge">0</span>)</button>
                     </div>
                     <button class="small-btn" id="btnClearLogs" type="button">Clear</button>
                 </div>
-                <div class="tab-content" id="liveTableTab">
+                <div class="log-container tab-content" id="logConsole"></div>
+                <div class="tab-content" id="liveTableTab" style="display: none;">
                     <div class="table-scroll-container">
                         <table class="realtime-table" id="realtimeTable">
                             <thead>
@@ -325,7 +326,6 @@
                         <div class="table-empty-state" id="tableEmptyState">No successful connections recorded in this session yet.</div>
                     </div>
                 </div>
-                <div class="log-container tab-content" id="logConsole" style="display: none;"></div>
             </div>
         </div>
     </div>
