@@ -49,17 +49,35 @@ func restartPlatformWindscribeApp() {
 }
 
 func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logger func(string)) error {
+	// 0. Master Injection Gate: Zero-Touch mode leaves client completely untouched
+	if !config.MasterInjection {
+		logger("Master Injection disabled (Zero-Touch mode): Leaving Windscribe engine settings untouched.")
+		return nil
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("could not determine user home directory: %w", err)
 	}
+
+	// Protocol compatibility analysis
+	hasSniProtocol := false
+	for proto := range config.ProtocolPorts {
+		p := strings.ToLower(proto)
+		if p == "stealth" || p == "wstunnel" {
+			hasSniProtocol = true
+			break
+		}
+	}
+
+	isLargeTls := config.LargeTLS && hasSniProtocol
 
 	// 1. Large TLS / stealth extra tls padding
 	extraConfDir := filepath.Join(homeDir, "Library", "Application Support", "Windscribe", "Windscribe2")
 	extraConfPath := filepath.Join(extraConfDir, "windscribe_extra.conf")
 	_ = os.MkdirAll(extraConfDir, 0755)
 
-	if config.LargeTLS {
+	if isLargeTls {
 		_ = os.WriteFile(extraConfPath, []byte("ws-stealth-extra-tls-padding\n"), 0644)
 		logger("Windscribe macOS: Applied Large TLS padding to windscribe_extra.conf")
 	} else {
@@ -67,6 +85,6 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		logger("Windscribe macOS: Cleared Large TLS padding from windscribe_extra.conf")
 	}
 
-	logger(fmt.Sprintf("Windscribe macOS: Synchronized settings (Amnezia: %s, SNI: %s, Routing: %s, Large TLS: %v, DNS: %s).", config.AmneziaConfig, config.CustomSNI, config.ServerRouting, config.LargeTLS, config.InternalDNS))
+	logger(fmt.Sprintf("Windscribe macOS: Synchronized settings (Amnezia: %s, SNI: %s, Routing: %s, Large TLS: %v, DNS: %s).", config.AmneziaConfig, config.CustomSNI, config.ServerRouting, isLargeTls, config.InternalDNS))
 	return nil
 }

@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -31,35 +33,38 @@ func NewOrchestrator(db *DatabaseManager, worker *WindscribeWorker) *Orchestrato
 }
 
 type TestConfig struct {
-	SelectedLocations []LocationData   `json:"selectedLocations"`
-	ProtocolPorts     map[string][]int `json:"protocolPorts"`
-	ProtocolTweaks    bool             `json:"protocolTweaks"`
-	AmneziaConfig     string           `json:"amneziaConfig"`
-	ServerRouting     string           `json:"serverRouting"`
-	CustomSNI         string           `json:"customSni"`
-	LargeTLS          bool             `json:"largeTls"`
-	InternalDNS       string           `json:"internalDns"`
-	ISP               string           `json:"isp"`
-	IsResume          bool             `json:"isResume"`
-	SelectionMode     string           `json:"selectionMode"` // "manual", "smart", "discovery", "all"
-	TestPing          bool             `json:"testPing"`
-	TestDownload      bool             `json:"testDownload"`
-	TestUpload        bool             `json:"testUpload"`
-	SpeedWait         int              `json:"speedWait"`
-	Timeout           int              `json:"timeout"`
+	SelectedLocations  []LocationData   `json:"selectedLocations"`
+	ProtocolPorts      map[string][]int `json:"protocolPorts"`
+	MasterInjection    bool             `json:"masterInjection"`
+	ProtocolTweaksMode string           `json:"protocolTweaksMode"`
+	ProtocolTweaks     bool             `json:"protocolTweaks"`
+	AmneziaConfig      string           `json:"amneziaConfig"`
+	ServerRouting      string           `json:"serverRouting"`
+	CustomSNI          string           `json:"customSni"`
+	LargeTLS           bool             `json:"largeTls"`
+	InternalDNS        string           `json:"internalDns"`
+	ISP                string           `json:"isp"`
+	IsResume           bool             `json:"isResume"`
+	SelectionMode      string           `json:"selectionMode"` // "manual", "smart", "discovery", "all"
+	TestPing           bool             `json:"testPing"`
+	TestDownload       bool             `json:"testDownload"`
+	TestUpload         bool             `json:"testUpload"`
+	SpeedWait          int              `json:"speedWait"`
+	Timeout            int              `json:"timeout"`
 }
 
 type EventUpdate struct {
-	Message     string `json:"message"`
-	Ping        string `json:"ping"`
-	Down        string `json:"down"`
-	Up          string `json:"up"`
-	Status      string `json:"status"`
-	ResetCards  bool   `json:"resetCards"`
-	ExcelPath   string `json:"excelPath,omitempty"`
-	CanResume   bool   `json:"canResume"`
-	TestedCount int    `json:"testedCount"`
-	TotalCount  int    `json:"totalCount"`
+	Message        string      `json:"message"`
+	Ping           string      `json:"ping"`
+	Down           string      `json:"down"`
+	Up             string      `json:"up"`
+	Status         string      `json:"status"`
+	ResetCards     bool        `json:"resetCards"`
+	ExcelPath      string      `json:"excelPath,omitempty"`
+	CanResume      bool        `json:"canResume"`
+	TestedCount    int         `json:"testedCount"`
+	TotalCount     int         `json:"totalCount"`
+	ConnectedItem  *TestResult `json:"connectedItem,omitempty"`
 }
 
 func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig, onConnected func(), sendUpdate func(EventUpdate)) {
@@ -102,11 +107,12 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					if !locMap[r.Location] {
 						locMap[r.Location] = true
 						smartLocs = append(smartLocs, LocationData{
-							Location:  r.Location,
-							City:      r.City,
-							Region:    r.Country,
-							Continent: r.Continent,
-							Display:   fmt.Sprintf("%s - %s (%s)", r.Country, r.City, r.Location),
+							Location:    r.Location,
+							City:        r.City,
+							Region:      r.Country,
+							CountryCode: r.CountryCode,
+							Continent:   r.Continent,
+							Display:     fmt.Sprintf("%s - %s (%s)", r.Country, r.City, r.Location),
 						})
 					}
 				}
@@ -162,6 +168,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 						Location:           loc.Location,
 						City:               loc.City,
 						Country:            loc.Region,
+						CountryCode:        loc.CountryCode,
 						Continent:          loc.Continent,
 						Protocol:           protocol,
 						Port:               port,
@@ -296,9 +303,67 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			continue
 		}
 
-		task.Status = "SUCCESS"
+		// Step 1.5: Anti-Flapping / Protocol "Blinking" Stabilization
+		// Wait 2.5s for Wintun/TUN interface and routing table to settle.
+		// If Windscribe helper crashed or DPI blocked the handshake, status flapped.
+		time.Sleep(2500 * time.Millisecond)
+		if !o.worker.IsConnected(ctx) {
+			task.Status = "FLAPPING"
+			o.db.RecordResult(task)
+			completedResults = append(completedResults, task)
+			o.mu.Lock()
+			o.completedResults = completedResults
+			o.mu.Unlock()
+			sendUpdate(EventUpdate{
+				Message:     fmt.Sprintf("Connection flapped / dropped after handshake on %s (%s:%d).", targetLoc, task.Protocol, task.Port),
+				Status:      "Flapping",
+				TestedCount: len(completedResults),
+				TotalCount:  o.totalTasks,
+			})
+			discCtxFlap, discCancelFlap := context.WithTimeout(context.Background(), 8*time.Second)
+			_ = o.worker.EnsureDisconnected(discCtxFlap)
+			discCancelFlap()
+			continue
+		}
+
+		// Step 1.6: Autonomous Tunnel Integrity & Route Leak Verification
+		expectedCode := task.CountryCode
+		if expectedCode == "" {
+			expectedCode = countryNameToCode[task.Country]
+		}
+
 		sendUpdate(EventUpdate{
-			Message:     fmt.Sprintf("Connected to %s (%s:%d) in %.2fs! Testing metrics...", targetLoc, task.Protocol, task.Port, duration),
+			Message: fmt.Sprintf("Verifying tunnel integrity and routing to %s (%s)...", task.Country, expectedCode),
+			Status:  "Verifying...",
+		})
+
+		tunnelOk, egressLoc, leakErr := verifyTunnelDestination(ctx, expectedCode)
+		if leakErr != nil && !tunnelOk {
+			task.Status = "ROUTING_LEAK"
+			o.db.RecordResult(task)
+			completedResults = append(completedResults, task)
+			o.mu.Lock()
+			o.completedResults = completedResults
+			o.mu.Unlock()
+			sendUpdate(EventUpdate{
+				Message:     fmt.Sprintf("Routing leak detected on %s (%s:%d): traffic bypassed VPN tunnel (%v). Skipping speedtest.", targetLoc, task.Protocol, task.Port, leakErr),
+				Status:      "Route Leak",
+				TestedCount: len(completedResults),
+				TotalCount:  o.totalTasks,
+			})
+			discCtxLeak, discCancelLeak := context.WithTimeout(context.Background(), 8*time.Second)
+			_ = o.worker.EnsureDisconnected(discCtxLeak)
+			discCancelLeak()
+			continue
+		}
+
+		task.Status = "SUCCESS"
+		locTag := ""
+		if egressLoc != "" {
+			locTag = fmt.Sprintf(" [Egress: %s]", egressLoc)
+		}
+		sendUpdate(EventUpdate{
+			Message:     fmt.Sprintf("Connected to %s (%s:%d)%s in %.2fs! Testing metrics...", targetLoc, task.Protocol, task.Port, locTag, duration),
 			Status:      "Connected",
 			TestedCount: len(completedResults),
 			TotalCount:  o.totalTasks,
@@ -358,6 +423,9 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 
 					s.DownloadTest()
 					task.Download = float64(s.DLSpeed) / 125000 // Convert bytes/s to Mbps
+					if task.Download < 0 {
+						task.Download = 0
+					}
 
 					// Immediately update Download card
 					sendUpdate(EventUpdate{
@@ -376,6 +444,9 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 
 					s.UploadTest()
 					task.Upload = float64(s.ULSpeed) / 125000 // Convert bytes/s to Mbps
+					if task.Upload < 0 {
+						task.Upload = 0
+					}
 
 					// Immediately update Upload card
 					sendUpdate(EventUpdate{
@@ -388,12 +459,14 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				sendUpdate(EventUpdate{
 					Message: fmt.Sprintf("Results for %s (%s:%d): Ping=%.0fms | Down=%.2fMbps | Up=%.2fMbps",
 						targetLoc, task.Protocol, task.Port, task.Ping, task.Download, task.Upload),
-					Status:  "Saved",
+					Status:        "Saved",
+					ConnectedItem: &task,
 				})
 			} else {
 				sendUpdate(EventUpdate{
-					Message: "Speedtest server unavailable or blocked.",
-					Status:  "Server N/A",
+					Message:       "Speedtest server unavailable or blocked.",
+					Status:        "Server N/A",
+					ConnectedItem: &task,
 				})
 			}
 
@@ -457,4 +530,74 @@ func (o *Orchestrator) Stop() {
 		defer cancel()
 		_ = o.worker.EnsureDisconnected(stopCtx)
 	}()
+}
+
+var countryNameToCode = map[string]string{
+	"Austria": "AT", "Australia": "AU", "Belgium": "BE", "Bulgaria": "BG",
+	"Canada": "CA", "Switzerland": "CH", "Cyprus": "CY", "Czech Republic": "CZ",
+	"Germany": "DE", "Denmark": "DK", "Estonia": "EE", "Spain": "ES",
+	"Finland": "FI", "France": "FR", "United Kingdom": "GB", "Greece": "GR",
+	"Hong Kong": "HK", "Croatia": "HR", "Hungary": "HU", "Ireland": "IE",
+	"Israel": "IL", "India": "IN", "Italy": "IT", "Japan": "JP",
+	"Moldova": "MD", "Netherlands": "NL", "Norway": "NO", "Poland": "PL",
+	"Portugal": "PT", "Romania": "RO", "Serbia": "RS", "Sweden": "SE",
+	"Singapore": "SG", "Slovakia": "SK", "Turkey": "TR", "Ukraine": "UA",
+	"United States": "US", "South Africa": "ZA",
+}
+
+// verifyTunnelDestination checks if the VPN interface is truly routing traffic
+// to the expected destination without querying or storing the user's IP address.
+func verifyTunnelDestination(ctx context.Context, expectedCountryCode string) (bool, string, error) {
+	client := &http.Client{
+		Timeout: 4 * time.Second,
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://1.1.1.1/cdn-cgi/trace", nil)
+	if err != nil {
+		return false, "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		req2, err2 := http.NewRequestWithContext(ctx, "GET", "https://cloudflare.com/cdn-cgi/trace", nil)
+		if err2 != nil {
+			return false, "", err
+		}
+		resp, err = client.Do(req2)
+		if err != nil {
+			return false, "", err
+		}
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	if err != nil {
+		return false, "", err
+	}
+
+	lines := strings.Split(string(bodyBytes), "\n")
+	detectedLoc := ""
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "loc=") {
+			detectedLoc = strings.ToUpper(strings.TrimPrefix(line, "loc="))
+			break
+		}
+	}
+
+	if detectedLoc == "" {
+		return false, "", fmt.Errorf("exit location not found in trace")
+	}
+
+	// Domestic Network Route Leak Prevention:
+	// If traffic egresses from local censored countries (Iran, Russia, China) while
+	// testing an overseas destination, the VPN interface is leaking traffic unencrypted.
+	expectedUpper := strings.ToUpper(strings.TrimSpace(expectedCountryCode))
+	if (detectedLoc == "IR" && expectedUpper != "IR") ||
+		(detectedLoc == "RU" && expectedUpper != "RU") ||
+		(detectedLoc == "CN" && expectedUpper != "CN") {
+		return false, detectedLoc, fmt.Errorf("local ISP leak detected: egress is %s (expected %s)", detectedLoc, expectedUpper)
+	}
+
+	return true, detectedLoc, nil
 }

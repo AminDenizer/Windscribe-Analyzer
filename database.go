@@ -17,6 +17,7 @@ type TestResult struct {
 	Location           string  `json:"location"`
 	City               string  `json:"city"`
 	Country            string  `json:"country"`
+	CountryCode        string  `json:"countryCode"`
 	Continent          string  `json:"continent"`
 	Protocol           string  `json:"protocol"`
 	Port               int     `json:"port"`
@@ -87,6 +88,7 @@ func (m *DatabaseManager) createTableAndMigrate() error {
 	// Schema migrations for existing databases
 	migrations := []string{
 		"ALTER TABLE tests ADD COLUMN continent TEXT DEFAULT ''",
+		"ALTER TABLE tests ADD COLUMN country_code TEXT DEFAULT ''",
 		"ALTER TABLE tests ADD COLUMN jitter REAL DEFAULT 0",
 		"ALTER TABLE tests ADD COLUMN protocol_tweaks BOOLEAN DEFAULT 1",
 		"ALTER TABLE tests ADD COLUMN server_routing TEXT DEFAULT 'Auto'",
@@ -104,8 +106,8 @@ func (m *DatabaseManager) createTableAndMigrate() error {
 func (m *DatabaseManager) RecordResult(res TestResult) error {
 	query := `
 		INSERT OR REPLACE INTO tests 
-		(location, city, country, continent, protocol, port, status, duration, ping, jitter, download, upload, profile_name, protocol_tweaks, anti_censorship_mode, server_routing, custom_sni, large_tls, internal_dns, isp, timestamp)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		(location, city, country, country_code, continent, protocol, port, status, duration, ping, jitter, download, upload, profile_name, protocol_tweaks, anti_censorship_mode, server_routing, custom_sni, large_tls, internal_dns, isp, timestamp)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	ts := res.Timestamp
 	if strings.TrimSpace(ts) == "" {
@@ -113,7 +115,7 @@ func (m *DatabaseManager) RecordResult(res TestResult) error {
 	}
 
 	_, err := m.db.Exec(query,
-		res.Location, res.City, res.Country, res.Continent, res.Protocol, res.Port, res.Status,
+		res.Location, res.City, res.Country, res.CountryCode, res.Continent, res.Protocol, res.Port, res.Status,
 		res.Duration, res.Ping, res.Jitter, res.Download, res.Upload,
 		res.ProfileName, res.ProtocolTweaks, res.AntiCensorshipMode,
 		res.ServerRouting, res.CustomSNI, res.LargeTLS, res.InternalDNS, res.ISP, ts)
@@ -198,7 +200,7 @@ func (m *DatabaseManager) SanitizeLegacyRecords(locs []LocationData) {
 }
 
 func (m *DatabaseManager) GetAllResults() ([]TestResult, error) {
-	query := `SELECT id, location, city, country, continent, protocol, port, status, duration, ping, jitter, download, upload, profile_name, protocol_tweaks, anti_censorship_mode, server_routing, custom_sni, large_tls, internal_dns, isp, timestamp 
+	query := `SELECT id, location, city, country, COALESCE(country_code, ''), continent, protocol, port, status, duration, ping, jitter, download, upload, profile_name, protocol_tweaks, anti_censorship_mode, server_routing, custom_sni, large_tls, internal_dns, isp, timestamp 
 	          FROM tests ORDER BY timestamp DESC`
 	rows, err := m.db.Query(query)
 	if err != nil {
@@ -210,7 +212,7 @@ func (m *DatabaseManager) GetAllResults() ([]TestResult, error) {
 	for rows.Next() {
 		var r TestResult
 		err := rows.Scan(
-			&r.ID, &r.Location, &r.City, &r.Country, &r.Continent,
+			&r.ID, &r.Location, &r.City, &r.Country, &r.CountryCode, &r.Continent,
 			&r.Protocol, &r.Port, &r.Status, &r.Duration, &r.Ping,
 			&r.Jitter, &r.Download, &r.Upload, &r.ProfileName,
 			&r.ProtocolTweaks, &r.AntiCensorshipMode, &r.ServerRouting,

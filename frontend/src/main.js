@@ -326,15 +326,21 @@ function updateSniFieldState() {
 }
 
 function updateTweaksState() {
-    const tweaksCb = document.getElementById("protocolTweaks");
+    const tweaksMode = document.getElementById("protocolTweaksMode");
+    const amneziaGroup = document.getElementById("amneziaGroup");
     const amneziaSelect = document.getElementById("amneziaConfig");
     const serverRoutingSelect = document.getElementById("serverRouting");
     const btnRefresh = document.getElementById("btnRefreshAmnezia");
     
-    const enabled = tweaksCb ? tweaksCb.checked : true;
-    if (amneziaSelect) amneziaSelect.disabled = !enabled;
-    if (serverRoutingSelect) serverRoutingSelect.disabled = !enabled;
-    if (btnRefresh) btnRefresh.disabled = !enabled;
+    const val = (tweaksMode ? tweaksMode.value : "Enabled").toLowerCase();
+    const isEnabled = (val === "enabled");
+
+    if (amneziaGroup) {
+        amneziaGroup.style.display = isEnabled ? "block" : "none";
+    }
+    if (amneziaSelect) amneziaSelect.disabled = !isEnabled;
+    if (btnRefresh) btnRefresh.disabled = !isEnabled;
+    if (serverRoutingSelect) serverRoutingSelect.disabled = (val === "disabled");
 }
 
 let toastTimeout = null;
@@ -369,6 +375,59 @@ function hideExcelToast() {
         toast.style.display = "none";
         toast.classList.remove("toast-hiding");
     }, 250);
+}
+
+let connectedCount = 0;
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function appendConnectedRow(item) {
+    const tableBody = document.getElementById("realtimeTableBody");
+    const emptyState = document.getElementById("tableEmptyState");
+    const badge = document.getElementById("connectedBadge");
+    if (!tableBody) return;
+
+    if (emptyState) emptyState.style.display = "none";
+
+    connectedCount++;
+    if (badge) badge.innerText = connectedCount;
+
+    const row = document.createElement("tr");
+    row.className = "row-success";
+
+    const pingVal = item.ping > 0 ? `${Math.round(item.ping)} ms` : "--";
+    const downVal = item.download > 0 ? `${item.download.toFixed(2)} Mbps` : "--";
+    const upVal = item.upload > 0 ? `${item.upload.toFixed(2)} Mbps` : (item.upload === 0 ? "0.00 Mbps" : "--");
+    const timeVal = item.timestamp ? (item.timestamp.split(" ")[1] || item.timestamp) : new Date().toLocaleTimeString();
+
+    row.innerHTML = `
+        <td class="cell-loc"><span>${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || item.location || "")}</span></td>
+        <td class="cell-proto">${escapeHtml(item.protocol)}:${item.port}</td>
+        <td class="cell-ping">${pingVal}</td>
+        <td class="cell-speed">${downVal}</td>
+        <td class="cell-speed" style="color:#d2a8ff;">${upVal}</td>
+        <td style="color:#8b949e; font-size:0.75rem;">${escapeHtml(timeVal)}</td>
+    `;
+
+    tableBody.insertBefore(row, tableBody.firstChild);
+}
+
+function resetConnectedTable() {
+    const tableBody = document.getElementById("realtimeTableBody");
+    const emptyState = document.getElementById("tableEmptyState");
+    const badge = document.getElementById("connectedBadge");
+    if (tableBody) tableBody.innerHTML = "";
+    if (emptyState) emptyState.style.display = "block";
+    if (badge) badge.innerText = "0";
+    connectedCount = 0;
 }
 
 function updateProtocolsSummary() {
@@ -688,9 +747,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     initProtocols();
     updateTweaksState();
 
-    const tweaksCb = document.getElementById("protocolTweaks");
-    if (tweaksCb) {
-        tweaksCb.addEventListener("change", updateTweaksState);
+    const tweaksMode = document.getElementById("protocolTweaksMode");
+    if (tweaksMode) {
+        tweaksMode.addEventListener("change", updateTweaksState);
+    }
+
+    const masterInjection = document.getElementById("masterInjection");
+    const injectionBody = document.getElementById("injectionBody");
+    if (masterInjection) {
+        masterInjection.addEventListener("change", () => {
+            if (injectionBody) {
+                if (masterInjection.checked) {
+                    injectionBody.classList.remove("disabled-panel");
+                } else {
+                    injectionBody.classList.add("disabled-panel");
+                }
+            }
+        });
     }
     
     setTimeout(() => {
@@ -797,10 +870,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btnOpenExcel = document.getElementById("btnOpenExcel");
     const excelToast = document.getElementById("excelToast");
     
+    // Log & Table Tab Switching
+    const tabLiveTable = document.getElementById("tabLiveTable");
+    const tabLiveConsole = document.getElementById("tabLiveConsole");
+    const liveTableTab = document.getElementById("liveTableTab");
+    const logConsole = document.getElementById("logConsole");
+
+    if (tabLiveTable && tabLiveConsole) {
+        tabLiveTable.addEventListener("click", () => {
+            tabLiveTable.classList.add("active");
+            tabLiveConsole.classList.remove("active");
+            if (liveTableTab) liveTableTab.style.display = "block";
+            if (logConsole) logConsole.style.display = "none";
+        });
+
+        tabLiveConsole.addEventListener("click", () => {
+            tabLiveConsole.classList.add("active");
+            tabLiveTable.classList.remove("active");
+            if (liveTableTab) liveTableTab.style.display = "none";
+            if (logConsole) logConsole.style.display = "block";
+        });
+    }
+
     if (btnClearLogs) {
         btnClearLogs.addEventListener("click", () => {
-            const logConsole = document.getElementById("logConsole");
             if (logConsole) logConsole.innerHTML = "";
+            resetConnectedTable();
         });
     }
 
@@ -864,13 +959,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         const ispName = (ispElem && ispElem.value !== "__custom__") ? ispElem.value : lastValidIsp;
         const ispVal = countryVal ? `${countryVal} - ${ispName}` : ispName;
 
+        const masterInjectionElem = document.getElementById("masterInjection");
+        const protocolTweaksModeElem = document.getElementById("protocolTweaksMode");
+        const tweakModeVal = protocolTweaksModeElem ? protocolTweaksModeElem.value : "Enabled";
+        const customSniElem = document.getElementById("customSni");
+        let customSniVal = customSniElem ? customSniElem.value.trim() : "";
+        if (customSniVal === "example.com") customSniVal = "";
+
         return {
             selectedLocations: selectedLocations,
             protocolPorts: protocolPorts,
-            protocolTweaks: document.getElementById("protocolTweaks").checked,
-            amneziaConfig: document.getElementById("amneziaConfig").value,
+            masterInjection: masterInjectionElem ? masterInjectionElem.checked : true,
+            protocolTweaksMode: tweakModeVal,
+            protocolTweaks: (tweakModeVal.toLowerCase() === "enabled"),
+            amneziaConfig: document.getElementById("amneziaConfig") ? document.getElementById("amneziaConfig").value : "Auto",
             serverRouting: document.getElementById("serverRouting").value,
-            customSni: document.getElementById("customSni").value.trim(),
+            customSni: customSniVal,
             largeTls: document.getElementById("largeTls").checked,
             internalDns: document.getElementById("internalDns").value,
             isp: ispVal,
@@ -889,6 +993,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Handle Live Events from Go Orchestrator
     window.runtime.EventsOn("test_update", (update) => {
         if (update.message) logMsg(update.message, "log-info");
+        
+        // Append successful connection to real-time table
+        if (update.connectedItem) {
+            appendConnectedRow(update.connectedItem);
+        }
         
         // Reset Cards between tests
         if (update.resetCards) {
@@ -946,6 +1055,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const config = collectTestConfig(false);
         if (!config) return;
 
+        resetConnectedTable();
         btnStart.disabled = true;
         btnStart.innerText = "TESTING IN PROGRESS...";
         btnStop.disabled = false;

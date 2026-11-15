@@ -209,6 +209,27 @@ func encodeQString(s string) []byte {
 }
 
 func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logger func(string)) error {
+	// 0. Master Injection Gate: Zero-Touch mode leaves client completely untouched
+	if !config.MasterInjection {
+		logger("Master Injection disabled (Zero-Touch mode): Leaving Windscribe engine settings untouched.")
+		return nil
+	}
+
+	// Protocol compatibility analysis
+	hasTweaksProtocol := false
+	hasSniProtocol := false
+	for proto := range config.ProtocolPorts {
+		p := strings.ToLower(proto)
+		if p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth" {
+			hasTweaksProtocol = true
+		}
+		if p == "stealth" || p == "wstunnel" {
+			hasSniProtocol = true
+		}
+	}
+
+	isLargeTls := config.LargeTLS && hasSniProtocol
+
 	// 1. Configure Large TLS / stealth extra tls padding in windscribe_extra.conf
 	localAppData := os.Getenv("LOCALAPPDATA")
 	if localAppData != "" {
@@ -216,7 +237,7 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		extraConfPath := filepath.Join(extraConfDir, "windscribe_extra.conf")
 		_ = os.MkdirAll(extraConfDir, 0755)
 
-		if config.LargeTLS {
+		if isLargeTls {
 			_ = os.WriteFile(extraConfPath, []byte("ws-stealth-extra-tls-padding\n"), 0644)
 			logger("Windscribe config: Applied Large TLS padding to windscribe_extra.conf")
 		} else {
@@ -229,9 +250,17 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	// 2. Determine target values from config
 	targetTweaks := int32(1) // Enabled
 	targetAmnezia := strings.TrimSpace(config.AmneziaConfig)
-	if !config.ProtocolTweaks || targetAmnezia == "None (Disabled)" || targetAmnezia == "Disabled" || targetAmnezia == "None" {
+	tweakMode := strings.ToLower(strings.TrimSpace(config.ProtocolTweaksMode))
+
+	if tweakMode == "disabled" || (!config.ProtocolTweaks && tweakMode == "") || !hasTweaksProtocol || targetAmnezia == "None (Disabled)" || targetAmnezia == "Disabled" || targetAmnezia == "None" {
 		targetTweaks = int32(2) // Disabled
 		targetAmnezia = ""
+		if !hasTweaksProtocol {
+			logger("Protocol Tweaks: Not supported by selected protocols (wstunnel/ikev2). Suppressing Amnezia injection.")
+		}
+	} else if tweakMode == "auto" {
+		targetTweaks = int32(0) // Auto: Windscribe handles tweaks internally
+		targetAmnezia = ""      // Suppress custom preset in Auto mode
 	}
 
 	targetRouting := int32(0) // Auto
@@ -245,13 +274,13 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	}
 
 	targetSni := strings.TrimSpace(config.CustomSNI)
-	if targetSni == "-" {
+	if targetSni == "example.com" || targetSni == "-" || !hasSniProtocol {
 		targetSni = ""
 	}
 
 	// Large TLS in engineSettings (isAPIAntiCensorship at splitOffset - 10)
 	targetAntiCensorship := byte(0)
-	if config.LargeTLS {
+	if isLargeTls {
 		targetAntiCensorship = byte(1)
 	}
 

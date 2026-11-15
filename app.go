@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 	goRuntime "runtime"
 
@@ -15,11 +16,12 @@ import (
 
 // LocationData represents a parsed location
 type LocationData struct {
-	Location  string `json:"location"`
-	City      string `json:"city"`
-	Region    string `json:"region"`
-	Continent string `json:"continent"`
-	Display   string `json:"display"`
+	Location    string `json:"location"`
+	City        string `json:"city"`
+	Region      string `json:"region"`
+	CountryCode string `json:"countryCode"`
+	Continent   string `json:"continent"`
+	Display     string `json:"display"`
 }
 
 // AmneziaConfigItem represents an Amnezia preset
@@ -162,11 +164,12 @@ func (a *App) fetchLocations(forceOnline bool) ([]LocationData, error) {
 					continent := getContinent(country.CountryCode)
 					for _, group := range country.Groups {
 						locs = append(locs, LocationData{
-							Location:  group.Nick,
-							City:      group.City,
-							Region:    country.Name,
-							Continent: continent,
-							Display:   fmt.Sprintf("%s - %s (%s)", country.Name, group.City, group.Nick),
+							Location:    group.Nick,
+							City:        group.City,
+							Region:      country.Name,
+							CountryCode: country.CountryCode,
+							Continent:   continent,
+							Display:     fmt.Sprintf("%s - %s (%s)", country.Name, group.City, group.Nick),
 						})
 					}
 				}
@@ -204,7 +207,7 @@ func (a *App) RefreshAmneziaConfigs() ([]AmneziaConfigItem, error) {
 func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error) {
 	cachePath := getCachePath("cached_amnezia_configs.json")
 
-	// Read cache if not forcing online
+	// 1. If not forcing online, try reading cache first
 	if !forceOnline {
 		if data, err := os.ReadFile(cachePath); err == nil {
 			var cached []AmneziaConfigItem
@@ -214,7 +217,36 @@ func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error)
 		}
 	}
 
-	// Save defaults if cache doesn't exist
+	// 2. Try fetching live presets directly from native Windscribe CLI
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	if presets, err := a.worker.GetAmneziaPresets(ctx); err == nil && len(presets) > 0 {
+		hasNone := false
+		for _, p := range presets {
+			if strings.ToLower(p.ID) == "none" || strings.Contains(strings.ToLower(p.Name), "disabled") {
+				hasNone = true
+				break
+			}
+		}
+		if !hasNone {
+			presets = append(presets, AmneziaConfigItem{ID: "None", Name: "None (Disabled)"})
+		}
+
+		if data, err := json.MarshalIndent(presets, "", "  "); err == nil {
+			_ = os.WriteFile(cachePath, data, 0644)
+		}
+		return presets, nil
+	}
+
+	// 3. Fallback to cached file if available
+	if data, err := os.ReadFile(cachePath); err == nil {
+		var cached []AmneziaConfigItem
+		if err := json.Unmarshal(data, &cached); err == nil && len(cached) > 0 {
+			return cached, nil
+		}
+	}
+
+	// 4. Default baseline presets and persist cache snapshot
 	if data, err := json.MarshalIndent(defaultAmneziaConfigs, "", "  "); err == nil {
 		_ = os.WriteFile(cachePath, data, 0644)
 	}
@@ -236,11 +268,12 @@ func (a *App) UpdateOnlineResources() {
 					continent := getContinent(country.CountryCode)
 					for _, group := range country.Groups {
 						locs = append(locs, LocationData{
-							Location:  group.Nick,
-							City:      group.City,
-							Region:    country.Name,
-							Continent: continent,
-							Display:   fmt.Sprintf("%s - %s (%s)", country.Name, group.City, group.Nick),
+							Location:    group.Nick,
+							City:        group.City,
+							Region:      country.Name,
+							CountryCode: country.CountryCode,
+							Continent:   continent,
+							Display:     fmt.Sprintf("%s - %s (%s)", country.Name, group.City, group.Nick),
 						})
 					}
 				}

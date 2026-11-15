@@ -52,17 +52,38 @@ func restartPlatformWindscribeApp() {
 }
 
 func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logger func(string)) error {
+	// 0. Master Injection Gate: Zero-Touch mode leaves client completely untouched
+	if !config.MasterInjection {
+		logger("Master Injection disabled (Zero-Touch mode): Leaving Windscribe engine settings untouched.")
+		return nil
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("could not determine user home directory: %w", err)
 	}
+
+	// Protocol compatibility analysis
+	hasTweaksProtocol := false
+	hasSniProtocol := false
+	for proto := range config.ProtocolPorts {
+		p := strings.ToLower(proto)
+		if p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth" {
+			hasTweaksProtocol = true
+		}
+		if p == "stealth" || p == "wstunnel" {
+			hasSniProtocol = true
+		}
+	}
+
+	isLargeTls := config.LargeTLS && hasSniProtocol
 
 	// 1. Large TLS / stealth extra tls padding
 	extraConfDir := filepath.Join(homeDir, ".config", "Windscribe", "Windscribe2")
 	extraConfPath := filepath.Join(extraConfDir, "windscribe_extra.conf")
 	_ = os.MkdirAll(extraConfDir, 0755)
 
-	if config.LargeTLS {
+	if isLargeTls {
 		_ = os.WriteFile(extraConfPath, []byte("ws-stealth-extra-tls-padding\n"), 0644)
 		logger("Windscribe Linux: Applied Large TLS padding to windscribe_extra.conf")
 	} else {
@@ -76,14 +97,23 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	_ = os.MkdirAll(confDir, 0755)
 
 	targetAmnezia := strings.TrimSpace(config.AmneziaConfig)
+	tweakMode := strings.ToLower(strings.TrimSpace(config.ProtocolTweaksMode))
 	targetTweaks := "1"
-	targetCircumvent := "false"
-	if config.LargeTLS || config.ProtocolTweaks {
-		targetCircumvent = "true"
-	}
-	if !config.ProtocolTweaks || targetAmnezia == "None (Disabled)" || targetAmnezia == "Disabled" || targetAmnezia == "None" {
+
+	if tweakMode == "disabled" || (!config.ProtocolTweaks && tweakMode == "") || !hasTweaksProtocol || targetAmnezia == "None (Disabled)" || targetAmnezia == "Disabled" || targetAmnezia == "None" {
 		targetTweaks = "2"
 		targetAmnezia = ""
+		if !hasTweaksProtocol {
+			logger("Protocol Tweaks: Not supported by selected protocols (wstunnel/ikev2). Suppressing Amnezia injection.")
+		}
+	} else if tweakMode == "auto" {
+		targetTweaks = "0"
+		targetAmnezia = ""
+	}
+
+	targetCircumvent := "false"
+	if isLargeTls || targetTweaks == "1" {
+		targetCircumvent = "true"
 	}
 
 	targetRouting := "0"
@@ -97,7 +127,7 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	}
 
 	targetSni := strings.TrimSpace(config.CustomSNI)
-	if targetSni == "-" {
+	if targetSni == "example.com" || targetSni == "-" || !hasSniProtocol {
 		targetSni = ""
 	}
 

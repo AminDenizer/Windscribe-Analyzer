@@ -202,6 +202,11 @@ body {
     width: 100%;
 }
 
+.modern-select option, select option {
+    background-color: #161b22;
+    color: #e6edf3;
+}
+
 .modern-input:focus, .modern-select:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 2px var(--accent-glow);
@@ -538,7 +543,147 @@ input:checked + .slider:before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+}
+
+.log-tabs {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #8b949e;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tab-btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tab-btn.active {
+    color: #ffffff;
+    background: rgba(56, 139, 253, 0.15);
+    border-color: rgba(56, 139, 253, 0.35);
+    box-shadow: 0 0 10px rgba(56, 139, 253, 0.2);
+}
+
+.connected-badge {
+    background: rgba(46, 160, 67, 0.2);
+    color: #3fb950;
+    border: 1px solid rgba(46, 160, 67, 0.35);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.tab-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.table-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    background: #06080c;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    position: relative;
+}
+
+.realtime-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    text-align: left;
+}
+
+.realtime-table thead {
+    position: sticky;
+    top: 0;
+    background: #0e1219;
+    z-index: 2;
+}
+
+.realtime-table th {
+    padding: 8px 12px;
+    color: #8b949e;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.realtime-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+}
+
+.realtime-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.realtime-table .row-success {
+    animation: fadeInRow 0.3s ease;
+}
+
+@keyframes fadeInRow {
+    from { opacity: 0; transform: translateY(-4px); background: rgba(46, 160, 67, 0.15); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.cell-loc {
+    font-weight: 600;
+    color: #e6edf3;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cell-proto {
+    font-family: 'Consolas', monospace;
+    color: #58a6ff;
+}
+
+.cell-ping {
+    color: #f2cc60;
+    font-weight: 600;
+}
+
+.cell-speed {
+    color: #3fb950;
+    font-weight: 600;
+}
+
+.table-empty-state {
+    padding: 40px;
+    text-align: center;
+    color: #8b949e;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.disabled-panel {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(0.5);
+    transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
 .log-container {

@@ -59,59 +59,70 @@
                         <span>🛡️ Anti-Censorship</span>
                     </div>
 
-                    <div class="form-group toggle-row">
-                        <label for="protocolTweaks">Protocol Tweaks</label>
+                    <div class="form-group toggle-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 10px;">
+                        <label for="masterInjection" style="font-weight: 700; color: #58a6ff;">Live Engine Injection</label>
                         <label class="switch">
-                            <input type="checkbox" id="protocolTweaks" checked>
+                            <input type="checkbox" id="masterInjection" checked>
                             <span class="slider round"></span>
                         </label>
                     </div>
 
-                    <div class="form-group">
-                        <label style="display:flex; justify-content:space-between; align-items:center;">
-                            Amnezia Config
-                            <button id="btnRefreshAmnezia" class="icon-btn sync-btn" title="Refresh Amnezia Configs">
-                                <svg class="sync-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                                </svg>
-                            </button>
-                        </label>
-                        <select id="amneziaConfig" class="modern-select">
-                            <option value="J - Iran Junk Packets">J - Iran Junk Packets</option>
-                            <option value="I - UAE and Iran Legacy">I - UAE and Iran Legacy</option>
-                            <option value="H - Iran 26 May 2026">H - Iran 26 May 2026</option>
-                            <option value="A - No Junk Russia Primary">A - No Junk Russia Primary</option>
-                            <option value="B - No Junk Russia Alt">B - No Junk Russia Alt</option>
-                            <option value="C - With Junk Russia Primary">C - With Junk Russia Primary</option>
-                            <option value="D - With Junk Russia Alt">D - With Junk Russia Alt</option>
-                            <option value="E - Baseline No Junk">E - Baseline No Junk</option>
-                            <option value="F - Baseline With Junk">F - Baseline With Junk</option>
-                            <option value="G - Popular Russia Website with Junk">G - Popular Russia Website with Junk</option>
-                            <option value="None">None (Disabled)</option>
-                        </select>
-                    </div>
+                    <div id="injectionBody">
+                        <div class="form-group">
+                            <label for="protocolTweaksMode">Protocol Tweaks</label>
+                            <select id="protocolTweaksMode" class="modern-select">
+                                <option value="Enabled" selected>Enabled</option>
+                                <option value="Auto">Auto</option>
+                                <option value="Disabled">Disabled</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group">
-                        <label>Server Routing</label>
-                        <select id="serverRouting" class="modern-select">
-                            <option value="Auto">Auto</option>
-                            <option value="Regular" selected>Regular</option>
-                            <option value="Alternate">Alternate</option>
-                        </select>
-                    </div>
+                        <div class="form-group" id="amneziaGroup">
+                            <label style="display:flex; justify-content:space-between; align-items:center;">
+                                Amnezia Config
+                                <button id="btnRefreshAmnezia" class="icon-btn sync-btn" title="Refresh Amnezia Configs">
+                                    <svg class="sync-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                                    </svg>
+                                </button>
+                            </label>
+                            <select id="amneziaConfig" class="modern-select">
+                                <option value="J - Iran Junk Packets">J - Iran Junk Packets</option>
+                                <option value="I - UAE and Iran Legacy">I - UAE and Iran Legacy</option>
+                                <option value="H - Iran 26 May 2026">H - Iran 26 May 2026</option>
+                                <option value="A - No Junk Russia Primary">A - No Junk Russia Primary</option>
+                                <option value="B - No Junk Russia Alt">B - No Junk Russia Alt</option>
+                                <option value="C - With Junk Russia Primary">C - With Junk Russia Primary</option>
+                                <option value="D - With Junk Russia Alt">D - With Junk Russia Alt</option>
+                                <option value="E - Baseline No Junk">E - Baseline No Junk</option>
+                                <option value="F - Baseline With Junk">F - Baseline With Junk</option>
+                                <option value="G - Popular Russia Website with Junk">G - Popular Russia Website with Junk</option>
+                                <option value="None">None (Disabled)</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group toggle-row">
-                        <label for="largeTls">Large TLS Padding</label>
-                        <label class="switch">
-                            <input type="checkbox" id="largeTls">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
+                        <div class="form-group">
+                            <label>Server Routing</label>
+                            <select id="serverRouting" class="modern-select">
+                                <option value="Auto">Auto</option>
+                                <option value="Regular" selected>Regular</option>
+                                <option value="Alternate">Alternate</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group" id="sniContainer">
-                        <label>Custom SNI Domain</label>
-                        <input type="text" id="customSni" class="modern-input" value="example.com" placeholder="e.g. example.com">
-                        <small class="hint-text">Applies to Stealth and Wstunnel protocols only.</small>
+                        <div class="form-group toggle-row">
+                            <label for="largeTls">Large TLS Padding</label>
+                            <label class="switch">
+                                <input type="checkbox" id="largeTls">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" id="sniContainer">
+                            <label>Custom SNI Domain</label>
+                            <input type="text" id="customSni" class="modern-input" value="" placeholder="e.g. example.com">
+                            <small class="hint-text">Applies to Stealth and Wstunnel protocols only.</small>
+                        </div>
                     </div>
                 </div>
 
@@ -281,10 +292,31 @@
 
             <div class="card log-card">
                 <div class="log-header">
-                    <h3>Live Console</h3>
-                    <button class="small-btn" id="btnClearLogs">Clear Log</button>
+                    <div class="log-tabs">
+                        <button class="tab-btn active" id="tabLiveTable" type="button">🟢 Connected (<span id="connectedBadge" class="connected-badge">0</span>)</button>
+                        <button class="tab-btn" id="tabLiveConsole" type="button">🖥️ Live Console</button>
+                    </div>
+                    <button class="small-btn" id="btnClearLogs" type="button">Clear</button>
                 </div>
-                <div class="log-container" id="logConsole"></div>
+                <div class="tab-content" id="liveTableTab">
+                    <div class="table-scroll-container">
+                        <table class="realtime-table" id="realtimeTable">
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Protocol</th>
+                                    <th>Ping</th>
+                                    <th>Download</th>
+                                    <th>Upload</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="realtimeTableBody"></tbody>
+                        </table>
+                        <div class="table-empty-state" id="tableEmptyState">No successful connections recorded in this session yet.</div>
+                    </div>
+                </div>
+                <div class="log-container tab-content" id="logConsole" style="display: none;"></div>
             </div>
         </div>
     </div>

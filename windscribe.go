@@ -132,6 +132,15 @@ func (w *WindscribeWorker) WaitForConnection(ctx context.Context, timeout time.D
 	}
 }
 
+func (w *WindscribeWorker) IsConnected(ctx context.Context) bool {
+	out, err := w.RunCLI(ctx, "status")
+	if err != nil {
+		return false
+	}
+	upperOut := strings.ToUpper(out)
+	return strings.Contains(upperOut, "CONNECTED") && !strings.Contains(upperOut, "DISCONNECTED") && !strings.Contains(upperOut, "CONNECTING")
+}
+
 func (w *WindscribeWorker) Disconnect(ctx context.Context) error {
 	_, err := w.RunCLI(ctx, "disconnect")
 	return err
@@ -166,5 +175,29 @@ func (w *WindscribeWorker) GetLocations(ctx context.Context) ([]string, error) {
 	}
 
 	return locs, nil
+}
+
+func (w *WindscribeWorker) GetAmneziaPresets(ctx context.Context) ([]AmneziaConfigItem, error) {
+	out, err := w.RunCLI(ctx, "amneziawg")
+	if err != nil {
+		return nil, err
+	}
+	var presets []AmneziaConfigItem
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "-") || strings.Contains(strings.ToLower(line), "preset") && !strings.Contains(line, " - ") {
+			continue
+		}
+		parts := strings.SplitN(line, " - ", 2)
+		if len(parts) == 2 {
+			id := strings.TrimSpace(parts[0])
+			presets = append(presets, AmneziaConfigItem{
+				ID:   id,
+				Name: line,
+			})
+		}
+	}
+	return presets, nil
 }
 
