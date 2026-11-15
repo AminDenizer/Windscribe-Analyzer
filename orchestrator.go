@@ -144,19 +144,16 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				for _, port := range portsToTest {
 					p := strings.ToLower(protocol)
 					isTweaksSupported := (p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth")
-					isAmneziaSupported := (p == "wireguard")
 
 					taskTweaks := config.ProtocolTweaks && isTweaksSupported
 
 					taskAmnezia := "-"
-					if isAmneziaSupported && config.ProtocolTweaks {
+					if isTweaksSupported && config.ProtocolTweaks {
 						if config.AmneziaConfig != "" && config.AmneziaConfig != "None (Disabled)" && config.AmneziaConfig != "Disabled" && config.AmneziaConfig != "None" {
 							taskAmnezia = config.AmneziaConfig
 						} else {
 							taskAmnezia = "None"
 						}
-					} else if isTweaksSupported && config.ProtocolTweaks {
-						taskAmnezia = "Native"
 					}
 
 					sni := config.CustomSNI

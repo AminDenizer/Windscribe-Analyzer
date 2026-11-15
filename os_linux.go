@@ -64,15 +64,13 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		return fmt.Errorf("could not determine user home directory: %w", err)
 	}
 
-	// Protocol compatibility analysis
-	hasWireguard := false
+	// Protocol compatibility analysis:
+	// Protocol Tweaks and Amnezia presets apply to 4 protocols: WireGuard, OpenVPN UDP, OpenVPN TCP, Stealth.
+	// Custom SNI and Large TLS apply to: Stealth and Wstunnel.
 	hasTweaksProtocol := false
 	hasSniProtocol := false
 	for proto := range config.ProtocolPorts {
 		p := strings.ToLower(proto)
-		if p == "wireguard" {
-			hasWireguard = true
-		}
 		if p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth" {
 			hasTweaksProtocol = true
 		}
@@ -113,13 +111,6 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		}
 	} else if tweakMode == "auto" {
 		targetTweaks = "0"
-		targetAmnezia = ""
-	}
-
-	// AmneziaWG presets specifically modify WireGuard packet headers/junk (Jc, Jmin, Jmax, S1, S2, H1..H4).
-	// If WireGuard is not among the selected protocols, do not inject AmneziaWG preset.
-	if !hasWireguard && targetAmnezia != "" {
-		logger("Amnezia Presets: Selected protocols support native Protocol Tweaks, but AmneziaWG presets are WireGuard-specific. Suppressing Amnezia preset injection.")
 		targetAmnezia = ""
 	}
 
