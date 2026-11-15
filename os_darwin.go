@@ -88,3 +88,7 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	logger(fmt.Sprintf("Windscribe macOS: Synchronized settings (Amnezia: %s, SNI: %s, Routing: %s, Large TLS: %v, DNS: %s).", config.AmneziaConfig, config.CustomSNI, config.ServerRouting, isLargeTls, config.InternalDNS))
 	return nil
 }
+
+func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
+	return 0, 0, false
+}

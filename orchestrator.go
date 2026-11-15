@@ -303,35 +303,100 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			continue
 		}
 
-		// Step 1.5: Anti-Flapping / Protocol "Blinking" Stabilization
-		// Wait 3.5s for Wintun/TUN interface and routing table to settle.
+		// Step 1.5: Adaptive Tuner/Adapter Packet Flow & Anti-Blinking Stabilization Loop (Up to 60s)
+		initialIn, initialOut, adapterFound := getPlatformWindscribeTraffic()
+
 		sendUpdate(EventUpdate{
-			Message: fmt.Sprintf("[%d/%d] Connected to %s (%s:%d). Stabilizing tunnel interface (3.5s)...", currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port),
+			Message: fmt.Sprintf("[%d/%d] Handshake connected on %s (%s:%d). Monitoring virtual adapter packet flow (up to 60s)...",
+				currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port),
 			Status:  "Stabilizing...",
 		})
-		time.Sleep(3500 * time.Millisecond)
 
-		if !o.worker.IsConnected(ctx) {
-			// Protocol flapped/dropped during settling phase: attempt reconnection recovery
-			sendUpdate(EventUpdate{
-				Message: fmt.Sprintf("Tunnel flapped on %s (%s:%d). Attempting reconnection recovery (attempt 2/2)...", targetLoc, task.Protocol, task.Port),
-				Status:  "Reconnecting...",
-			})
-			discFlap, discFlapCancel := context.WithTimeout(context.Background(), 6*time.Second)
-			_ = o.worker.EnsureDisconnected(discFlap)
-			discFlapCancel()
-			time.Sleep(1 * time.Second)
+		startTime := time.Now()
+		maxStabilizeTime := 60 * time.Second
+		minBytesThreshold := uint64(20 * 1024) // 20 KB threshold per real-world benchmarks
+		isStable := false
+		lastLogTime := time.Now()
 
-			if retryErr := o.worker.Connect(ctx, targetLoc, task.Protocol, task.Port); retryErr == nil {
-				reconn, retryDur, _ := o.worker.WaitForConnection(ctx, time.Duration(config.Timeout)*time.Second)
-				if reconn {
-					task.Duration += retryDur
-					time.Sleep(3500 * time.Millisecond)
+		for time.Since(startTime) < maxStabilizeTime {
+			select {
+			case <-ctx.Done():
+				break
+			case <-time.After(500 * time.Millisecond):
+			}
+
+			if ctx.Err() != nil {
+				break
+			}
+
+			// 1. Verify CLI status is still CONNECTED
+			if !o.worker.IsConnected(ctx) {
+				break
+			}
+
+			curIn, curOut, isUp := getPlatformWindscribeTraffic()
+			var inDiff, outDiff uint64
+			if curIn >= initialIn {
+				inDiff = curIn - initialIn
+			}
+			if curOut >= initialOut {
+				outDiff = curOut - initialOut
+			}
+
+			// 2. Check if virtual adapter received sufficient packets/bytes
+			if adapterFound && isUp && (inDiff >= minBytesThreshold || (inDiff >= 10*1024 && outDiff >= 5*1024)) {
+				isStable = true
+				sendUpdate(EventUpdate{
+					Message: fmt.Sprintf("Tunnel stabilized in %.1fs (Virtual adapter traffic: ↓%.1f KB / ↑%.1f KB).",
+						time.Since(startTime).Seconds(), float64(inDiff)/1024, float64(outDiff)/1024),
+					Status: "Stabilized",
+				})
+				break
+			}
+
+			// Periodic UI status update every 3 seconds while waiting
+			if time.Since(lastLogTime) >= 3*time.Second {
+				lastLogTime = time.Now()
+				elapsedSec := int(time.Since(startTime).Seconds())
+				if adapterFound {
+					sendUpdate(EventUpdate{
+						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00) — Virtual adapter: ↓%.1f KB / ↑%.1f KB...",
+							currentTested, o.totalTasks, targetLoc, elapsedSec, float64(inDiff)/1024, float64(outDiff)/1024),
+						Status: "Stabilizing...",
+					})
+				} else {
+					sendUpdate(EventUpdate{
+						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00)...",
+							currentTested, o.totalTasks, targetLoc, elapsedSec),
+						Status: "Stabilizing...",
+					})
+				}
+
+				// Send lightweight stimulus packet across tunnel to provoke RX/TX activity
+				go func() {
+					client := &http.Client{Timeout: 2 * time.Second}
+					resp, _ := client.Get("http://1.1.1.1/cdn-cgi/trace")
+					if resp != nil {
+						_ = resp.Body.Close()
+					}
+				}()
+			}
+
+			// Fallback if adapter statistics are not exposed by OS (e.g. locked down permissions)
+			if !adapterFound && time.Since(startTime) >= 6*time.Second {
+				expectedCode := task.CountryCode
+				if expectedCode == "" {
+					expectedCode = countryNameToCode[task.Country]
+				}
+				if ok, _, _ := verifyTunnelDestination(ctx, expectedCode); ok {
+					isStable = true
+					break
 				}
 			}
 		}
 
-		if !o.worker.IsConnected(ctx) {
+		// If adapter didn't stabilize within 60s or connection dropped:
+		if !isStable || !o.worker.IsConnected(ctx) {
 			task.Status = "FLAPPING"
 			o.db.RecordResult(task)
 			completedResults = append(completedResults, task)
@@ -339,7 +404,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			o.completedResults = completedResults
 			o.mu.Unlock()
 			sendUpdate(EventUpdate{
-				Message:     fmt.Sprintf("Connection flapped / dropped after handshake on %s (%s:%d).", targetLoc, task.Protocol, task.Port),
+				Message:     fmt.Sprintf("Tunnel stalled on %s (%s:%d): virtual adapter packet flow did not rise (< 20 KB after 60s). Stuck in blinking phase. Disconnecting cleanly.", targetLoc, task.Protocol, task.Port),
 				Status:      "Flapping",
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,

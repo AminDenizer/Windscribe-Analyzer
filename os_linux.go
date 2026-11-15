@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -154,6 +155,17 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		}
 	}
 
+	// User rule: If SNI is left empty in UI, preserve existing configured SNI
+	if targetSni == "" {
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "CustomSniDomain=") {
+				targetSni = strings.TrimPrefix(trimmed, "CustomSniDomain=")
+				break
+			}
+		}
+	}
+
 	// Sections to manage
 	connSettings := map[string]string{
 		"CircumventCensorship": targetCircumvent,
@@ -265,4 +277,34 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	}
 
 	return nil
+}
+
+func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
+	data, err := os.ReadFile("/proc/net/dev")
+	if err != nil {
+		return 0, 0, false
+	}
+	lines := strings.Split(string(data), "\n")
+	var totalIn, totalOut uint64
+	found := false
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		parts := strings.Split(line, ":")
+		if len(parts) != 2 {
+			continue
+		}
+		ifName := strings.TrimSpace(parts[0])
+		lower := strings.ToLower(ifName)
+		if strings.HasPrefix(lower, "tun") || strings.HasPrefix(lower, "ws") || strings.HasPrefix(lower, "wg") || strings.Contains(lower, "windscribe") {
+			fields := strings.Fields(parts[1])
+			if len(fields) >= 9 {
+				inBytes, _ := strconv.ParseUint(fields[0], 10, 64)
+				outBytes, _ := strconv.ParseUint(fields[8], 10, 64)
+				totalIn += inBytes
+				totalOut += outBytes
+				found = true
+			}
+		}
+	}
+	return totalIn, totalOut, found
 }

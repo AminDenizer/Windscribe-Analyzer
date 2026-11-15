@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 	"unicode/utf16"
+	"unsafe"
 
 	"golang.org/x/sys/windows/registry"
 )
@@ -365,6 +366,12 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 		return nil
 	}
 
+	// User rule: If SNI is left empty in our UI, do NOT erase the user's manual SNI!
+	// Preserve whatever SNI is already present in the Windscribe engine.
+	if targetSni == "" {
+		targetSni = currentSni
+	}
+
 	// Current AntiCensorship / Large TLS setting in engineSettings
 	currentAntiCensorship := byte(0)
 	if splitOffset >= 10 {
@@ -477,4 +484,90 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	}
 
 	return nil
+}
+
+var (
+	modiphlpapi      = syscall.NewLazyDLL("iphlpapi.dll")
+	procGetIfTable2  = modiphlpapi.NewProc("GetIfTable2")
+	procFreeMibTable = modiphlpapi.NewProc("FreeMibTable")
+)
+
+type MIB_IF_ROW2 struct {
+	InterfaceLuid               uint64
+	InterfaceIndex              uint32
+	InterfaceGuid               [16]byte
+	Alias                       [257]uint16
+	Description                 [257]uint16
+	PhysicalAddressLength       uint32
+	PhysicalAddress             [32]byte
+	PermanentPhysicalAddress    [32]byte
+	Mtu                         uint32
+	Type                        uint32
+	TunnelType                  uint32
+	MediaType                   uint32
+	PhysicalMediumType          uint32
+	AccessType                  uint32
+	DirectionType               uint32
+	InterfaceAndOperStatusFlags byte
+	OperStatus                  uint32
+	AdminStatus                 uint32
+	MediaConnectState           uint32
+	NetworkGuid                 [16]byte
+	ConnectionType              uint32
+	_padding                    [4]byte
+	TransmitLinkSpeed           uint64
+	ReceiveLinkSpeed            uint64
+	InOctets                    uint64
+	InUcastPkts                 uint64
+	InNUcastPkts                uint64
+	InDiscards                  uint64
+	InErrors                    uint64
+	InUnknownProtos             uint64
+	InUcastOctets               uint64
+	InMulticastOctets           uint64
+	InBroadcastOctets           uint64
+	OutOctets                   uint64
+	OutUcastPkts                uint64
+	OutNUcastPkts               uint64
+	OutDiscards                 uint64
+	OutErrors                   uint64
+	OutUcastOctets              uint64
+	OutMulticastOctets          uint64
+	OutBroadcastOctets          uint64
+	OutQLen                     uint64
+}
+
+type MIB_IF_TABLE2 struct {
+	NumEntries uint32
+	_padding   [4]byte
+	Table      [1]MIB_IF_ROW2
+}
+
+func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
+	var tablePtr *MIB_IF_TABLE2
+	r1, _, _ := procGetIfTable2.Call(uintptr(unsafe.Pointer(&tablePtr)))
+	if r1 != 0 {
+		return 0, 0, false
+	}
+	defer procFreeMibTable.Call(uintptr(unsafe.Pointer(tablePtr)))
+
+	entries := (*[1 << 16]MIB_IF_ROW2)(unsafe.Pointer(&tablePtr.Table[0]))[:tablePtr.NumEntries:tablePtr.NumEntries]
+	var totalIn, totalOut uint64
+	found := false
+	for _, row := range entries {
+		alias := syscall.UTF16ToString(row.Alias[:])
+		desc := syscall.UTF16ToString(row.Description[:])
+		nameLower := strings.ToLower(alias + " " + desc)
+		if strings.Contains(nameLower, "windscribe") || (strings.Contains(nameLower, "wintun") && row.OperStatus == 1) {
+			if strings.Contains(nameLower, "filter") || strings.Contains(nameLower, "scheduler") || strings.Contains(nameLower, "npcap") {
+				continue
+			}
+			totalIn += row.InOctets
+			totalOut += row.OutOctets
+			if row.OperStatus == 1 {
+				found = true
+			}
+		}
+	}
+	return totalIn, totalOut, found
 }
