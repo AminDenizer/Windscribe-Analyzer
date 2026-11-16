@@ -587,6 +587,7 @@ func getPlatformWindscribeTrafficForProtocol(protocol string) (uint64, uint64, b
 		case "udp", "tcp", "stealth", "wstunnel":
 			matched = strings.Contains(nameLower, "windscribeopenvpn") ||
 				strings.Contains(nameLower, "windscribevpn") ||
+				(strings.Contains(nameLower, "tap-windows") && !strings.Contains(nameLower, "openvpn connect")) ||
 				(strings.Contains(nameLower, "windscribe") && !strings.Contains(nameLower, "wireguard") && !strings.Contains(nameLower, "ikev2"))
 		default:
 			matched = strings.Contains(nameLower, "windscribe") ||
