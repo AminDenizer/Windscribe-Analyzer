@@ -1267,4 +1267,25 @@ document.addEventListener("DOMContentLoaded", async () => {
             hideErrorModal();
         }
     });
+
+    // Master Shuffle All sync
+    const shuffleAll = document.getElementById("shuffleAll");
+    const shuffleLocs = document.getElementById("shuffleLocations");
+    const shuffleProtos = document.getElementById("shuffleProtocols");
+    const syncShuffleMaster = () => {
+        if (!shuffleAll || !shuffleLocs || !shuffleProtos) return;
+        const l = shuffleLocs.checked;
+        const p = shuffleProtos.checked;
+        shuffleAll.checked = l && p;
+        shuffleAll.indeterminate = l !== p;
+    };
+    if (shuffleAll && shuffleLocs && shuffleProtos) {
+        shuffleAll.addEventListener("change", () => {
+            shuffleLocs.checked = shuffleAll.checked;
+            shuffleProtos.checked = shuffleAll.checked;
+            shuffleAll.indeterminate = false;
+        });
+        shuffleLocs.addEventListener("change", syncShuffleMaster);
+        shuffleProtos.addEventListener("change", syncShuffleMaster);
+    }
 });
