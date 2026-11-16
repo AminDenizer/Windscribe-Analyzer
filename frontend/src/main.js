@@ -1019,7 +1019,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             testDownload: true,
             testUpload: true,
             timeout: parseInt(document.getElementById("connTimeout").value) || 25,
-            speedWait: parseInt(document.getElementById("speedWait").value) || 3
+            speedWait: parseInt(document.getElementById("speedWait").value) || 3,
+            stabilizeEnabled: document.getElementById("stabilizeEnabled") ? document.getElementById("stabilizeEnabled").checked : true,
+            stabilizeMinBytes: parseInt(document.getElementById("stabilizeMinBytes")?.value) || 500,
+            stabilizeUnit: document.getElementById("stabilizeUnitBtn")?.dataset.unit || "KB",
+            stabilizeTimeout: parseInt(document.getElementById("stabilizeTimeout")?.value) || 60
         };
     }
 
@@ -1191,4 +1195,36 @@ document.addEventListener("DOMContentLoaded", async () => {
             input.value = val;
         });
     });
+
+    // Tunnel Stabilization Toggle & Unit Badge (KB / MB)
+    const stabilizeEnabled = document.getElementById("stabilizeEnabled");
+    const stabilizeUnitBtn = document.getElementById("stabilizeUnitBtn");
+    const stabilizeUnitLabel = document.getElementById("stabilizeUnitLabel");
+    const stabilizeControlsRow = document.getElementById("stabilizeControlsRow");
+    const stabilizeMinBytes = document.getElementById("stabilizeMinBytes");
+    const stabilizeTimeout = document.getElementById("stabilizeTimeout");
+
+    if (stabilizeUnitBtn) {
+        stabilizeUnitBtn.dataset.unit = "KB";
+        stabilizeUnitBtn.addEventListener("click", () => {
+            const nextUnit = stabilizeUnitBtn.dataset.unit === "KB" ? "MB" : "KB";
+            stabilizeUnitBtn.dataset.unit = nextUnit;
+            stabilizeUnitBtn.textContent = nextUnit;
+            stabilizeUnitBtn.classList.toggle("is-mb", nextUnit === "MB");
+            if (stabilizeUnitLabel) stabilizeUnitLabel.textContent = nextUnit;
+        });
+    }
+
+    const syncStabilizeDisabledState = () => {
+        const enabled = stabilizeEnabled ? stabilizeEnabled.checked : true;
+        if (stabilizeControlsRow) stabilizeControlsRow.classList.toggle("is-disabled", !enabled);
+        if (stabilizeUnitBtn) stabilizeUnitBtn.disabled = !enabled;
+        if (stabilizeMinBytes) stabilizeMinBytes.disabled = !enabled;
+        if (stabilizeTimeout) stabilizeTimeout.disabled = !enabled;
+    };
+
+    if (stabilizeEnabled) {
+        stabilizeEnabled.addEventListener("change", syncStabilizeDisabledState);
+        syncStabilizeDisabledState();
+    }
 });

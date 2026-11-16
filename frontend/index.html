@@ -204,6 +204,33 @@
                         </div>
                     </div>
                 </div>
+                <div class="form-group stabilize-card">
+                    <div class="stabilize-header">
+                        <label class="master-checkbox-label" style="margin:0; cursor:pointer;">
+                            <input type="checkbox" id="stabilizeEnabled" checked>
+                            <span>Tunnel Stabilization</span>
+                        </label>
+                        <button type="button" id="stabilizeUnitBtn" class="unit-badge-btn" title="Toggle KB / MB">KB</button>
+                    </div>
+                    <div id="stabilizeControlsRow" style="display:flex; gap:10px; margin-top:8px;">
+                        <div style="flex:1;">
+                            <span class="sub-label">Target (<span id="stabilizeUnitLabel">KB</span>)</span>
+                            <div class="stepper-box">
+                                <button type="button" class="step-btn" data-step="down" data-target="stabilizeMinBytes">−</button>
+                                <input type="number" id="stabilizeMinBytes" class="modern-input stepper-input" value="500" min="1" max="100000">
+                                <button type="button" class="step-btn" data-step="up" data-target="stabilizeMinBytes">+</button>
+                            </div>
+                        </div>
+                        <div style="flex:1;">
+                            <span class="sub-label">Window (sec)</span>
+                            <div class="stepper-box">
+                                <button type="button" class="step-btn" data-step="down" data-target="stabilizeTimeout">−</button>
+                                <input type="number" id="stabilizeTimeout" class="modern-input stepper-input" value="60" min="5" max="300">
+                                <button type="button" class="step-btn" data-step="up" data-target="stabilizeTimeout">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div style="margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: rgba(56, 139, 253, 0.08); border: 1px solid rgba(56, 139, 253, 0.25); font-size: 11px; color: #8b949e; line-height: 1.4;">
                     <strong style="color: #58a6ff;">🛡️ Firewall Tip:</strong> Set Windscribe Firewall to <b>Always On</b> (not Always On+) or <b>Auto → Before Connection</b> to prevent speedtest route leaks.
                 </div>

@@ -69,6 +69,7 @@ func (w *WindscribeWorker) EnsureDisconnected(ctx context.Context) error {
 			upper := strings.ToUpper(out)
 			if strings.Contains(upper, "CONNECT STATE: DISCONNECTED") || (strings.Contains(upper, "DISCONNECTED") && !strings.Contains(upper, "DISCONNECTING")) {
 				killPlatformVPNHelpers()
+				time.Sleep(800 * time.Millisecond)
 				return nil
 			}
 		}
@@ -83,6 +84,7 @@ func (w *WindscribeWorker) EnsureDisconnected(ctx context.Context) error {
 	if err == nil {
 		upper = strings.ToUpper(out)
 		if strings.Contains(upper, "CONNECT STATE: DISCONNECTED") || (strings.Contains(upper, "DISCONNECTED") && !strings.Contains(upper, "DISCONNECTING")) {
+			time.Sleep(800 * time.Millisecond)
 			return nil
 		}
 	}
@@ -101,19 +103,33 @@ func (w *WindscribeWorker) ApplyConnectionTweaks(ctx context.Context, config Tes
 
 func (w *WindscribeWorker) Connect(ctx context.Context, city string, protocol string, port int) error {
 	targetArg := fmt.Sprintf("%s:%d", protocol, port)
-	_, err := w.RunCLI(ctx, "connect", "-n", city, targetArg)
-	return err
+	out, err := w.RunCLI(ctx, "connect", "-n", city, targetArg)
+	if err != nil {
+		trimmed := strings.TrimSpace(out)
+		if trimmed != "" {
+			return fmt.Errorf("%w (%s)", err, trimmed)
+		}
+		return err
+	}
+	return nil
 }
 
 func (w *WindscribeWorker) WaitForConnection(ctx context.Context, timeout time.Duration) (bool, float64, error) {
+	return w.WaitForConnectionWithRetry(ctx, timeout, "", "", 0, nil)
+}
+
+func (w *WindscribeWorker) WaitForConnectionWithRetry(ctx context.Context, timeout time.Duration, city string, protocol string, port int, onRetry func(string)) (bool, float64, error) {
 	start := time.Now()
+	sawConnecting := false
+	retried := false
 	for {
 		select {
 		case <-ctx.Done():
 			return false, time.Since(start).Seconds(), ctx.Err()
 		default:
-			if time.Since(start) > timeout {
-				return false, time.Since(start).Seconds(), nil
+			elapsed := time.Since(start)
+			if elapsed > timeout {
+				return false, elapsed.Seconds(), nil
 			}
 			out, err := w.RunCLI(ctx, "status")
 			if err == nil {
@@ -121,6 +137,19 @@ func (w *WindscribeWorker) WaitForConnection(ctx context.Context, timeout time.D
 				if strings.Contains(upperOut, "CONNECTED") && !strings.Contains(upperOut, "DISCONNECTED") && !strings.Contains(upperOut, "CONNECTING") {
 					duration := time.Since(start).Seconds()
 					return true, duration, nil
+				}
+				if strings.Contains(upperOut, "CONNECTING") {
+					sawConnecting = true
+				} else if strings.Contains(upperOut, "DISCONNECTED") && !sawConnecting && city != "" {
+					if !retried && elapsed >= 4*time.Second {
+						retried = true
+						if onRetry != nil {
+							onRetry(fmt.Sprintf("Windscribe remained disconnected on %s (%s:%d); re-issuing connect command...", city, protocol, port))
+						}
+						_ = w.Connect(ctx, city, protocol, port)
+					} else if retried && elapsed >= 10*time.Second {
+						return false, elapsed.Seconds(), fmt.Errorf("windscribe failed to initiate connection (remained disconnected)")
+					}
 				}
 			}
 			select {

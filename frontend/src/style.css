@@ -1196,3 +1196,52 @@ input[type="number"] {
     background: #2ea043 !important;
     box-shadow: 0 0 10px rgba(46, 160, 67, 0.4);
 }
+
+.stabilize-card {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border);
+}
+
+.stabilize-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.unit-badge-btn {
+    background: rgba(56, 139, 253, 0.14);
+    color: #58a6ff;
+    border: 1px solid rgba(56, 139, 253, 0.35);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.unit-badge-btn:hover:not(:disabled) {
+    background: rgba(56, 139, 253, 0.25);
+    border-color: #58a6ff;
+}
+
+.unit-badge-btn.is-mb {
+    background: rgba(163, 113, 247, 0.16);
+    color: #bc8cff;
+    border-color: rgba(163, 113, 247, 0.4);
+}
+
+.unit-badge-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+#stabilizeControlsRow.is-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}

@@ -563,18 +563,22 @@ func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 	var totalIn, totalOut uint64
 	found := false
 	for _, row := range entries {
+		if row.OperStatus != 1 {
+			continue
+		}
 		alias := syscall.UTF16ToString(row.Alias[:])
 		desc := syscall.UTF16ToString(row.Description[:])
 		nameLower := strings.ToLower(alias + " " + desc)
-		if strings.Contains(nameLower, "windscribe") || (strings.Contains(nameLower, "wintun") && row.OperStatus == 1) {
-			if strings.Contains(nameLower, "filter") || strings.Contains(nameLower, "scheduler") || strings.Contains(nameLower, "npcap") {
-				continue
-			}
+		if strings.Contains(nameLower, "filter") || strings.Contains(nameLower, "scheduler") || strings.Contains(nameLower, "npcap") || strings.Contains(nameLower, "lightweight") {
+			continue
+		}
+		if strings.Contains(nameLower, "windscribe") ||
+			strings.Contains(nameLower, "wintun") ||
+			strings.Contains(nameLower, "wireguard") ||
+			strings.Contains(nameLower, "wan miniport (ikev2)") {
 			totalIn += row.InOctets
 			totalOut += row.OutOctets
-			if row.OperStatus == 1 {
-				found = true
-			}
+			found = true
 		}
 	}
 	return totalIn, totalOut, found

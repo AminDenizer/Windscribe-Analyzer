@@ -51,6 +51,10 @@ type TestConfig struct {
 	TestUpload         bool             `json:"testUpload"`
 	SpeedWait          int              `json:"speedWait"`
 	Timeout            int              `json:"timeout"`
+	StabilizeEnabled   bool             `json:"stabilizeEnabled"`
+	StabilizeMinBytes  int              `json:"stabilizeMinBytes"`
+	StabilizeUnit      string           `json:"stabilizeUnit"` // "KB" or "MB"
+	StabilizeTimeout   int              `json:"stabilizeTimeout"`
 }
 
 type EventUpdate struct {
@@ -286,7 +290,12 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			continue
 		}
 
-		connected, duration, _ := o.worker.WaitForConnection(ctx, time.Duration(config.Timeout)*time.Second)
+		connected, duration, connErr := o.worker.WaitForConnectionWithRetry(ctx, time.Duration(config.Timeout)*time.Second, targetLoc, task.Protocol, task.Port, func(msg string) {
+			sendUpdate(EventUpdate{
+				Message: fmt.Sprintf("[%d/%d] %s", currentTested, o.totalTasks, msg),
+				Status:  "Connecting...",
+			})
+		})
 		task.Duration = duration
 
 		if !connected {
@@ -296,8 +305,12 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			o.mu.Lock()
 			o.completedResults = completedResults
 			o.mu.Unlock()
+			failMsg := fmt.Sprintf("Timeout connecting to %s (%s:%d) after %.1fs", targetLoc, task.Protocol, task.Port, duration)
+			if connErr != nil && connErr != context.Canceled && connErr != context.DeadlineExceeded {
+				failMsg = fmt.Sprintf("Connection aborted on %s (%s:%d) after %.1fs: %v", targetLoc, task.Protocol, task.Port, duration, connErr)
+			}
 			sendUpdate(EventUpdate{
-				Message:     fmt.Sprintf("Timeout connecting to %s (%s:%d) after %.1fs", targetLoc, task.Protocol, task.Port, duration),
+				Message:     failMsg,
 				Status:      "Timeout",
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,
@@ -308,158 +321,210 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			continue
 		}
 
-		// Step 1.5: Adaptive Tuner/Adapter Packet Flow & Anti-Blinking Stabilization Loop (Up to 60s)
-		initialIn, initialOut, adapterFound := getPlatformWindscribeTraffic()
+		// Step 1.5: Adaptive Tuner/Adapter Packet Flow & Anti-Blinking Stabilization Loop (Configurable)
+		if config.StabilizeEnabled {
+			maxSec := config.StabilizeTimeout
+			if maxSec <= 0 {
+				maxSec = 60
+			}
+			targetVal := config.StabilizeMinBytes
+			if targetVal <= 0 {
+				targetVal = 500
+			}
+			unit := strings.ToUpper(strings.TrimSpace(config.StabilizeUnit))
+			if unit != "MB" {
+				unit = "KB"
+			}
+			var minBytesThreshold uint64
+			if unit == "MB" {
+				minBytesThreshold = uint64(targetVal) * 1024 * 1024
+			} else {
+				minBytesThreshold = uint64(targetVal) * 1024
+			}
+			targetLabel := fmt.Sprintf("%d %s", targetVal, unit)
+			totalWindowStr := fmt.Sprintf("%02d:%02d", maxSec/60, maxSec%60)
 
-		sendUpdate(EventUpdate{
-			Message: fmt.Sprintf("[%d/%d] Handshake reported on %s (%s:%d). Monitoring virtual adapter traffic flow (up to 60s, target: 500 KB)...",
-				currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port),
-			Status:  "Stabilizing...",
-		})
+			initialIn, initialOut, adapterFound := getPlatformWindscribeTraffic()
 
-		startTime := time.Now()
-		maxStabilizeTime := 60 * time.Second
-		minBytesThreshold := uint64(500 * 1024) // 500 KB payload threshold per user benchmark
-		isStable := false
-		lastLogTime := time.Now()
-		windscribeReconnecting := false
+			sendUpdate(EventUpdate{
+				Message: fmt.Sprintf("[%d/%d] Handshake reported on %s (%s:%d). Monitoring virtual adapter traffic flow (up to %ds, target: %s)...",
+					currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port, maxSec, targetLabel),
+				Status:  "Stabilizing...",
+			})
 
-		// Launch background payload downloader to stimulate real packet flow through the adapter
-		probeCtx, cancelProbe := context.WithCancel(ctx)
-		defer cancelProbe()
+			startTime := time.Now()
+			maxStabilizeTime := time.Duration(maxSec) * time.Second
+			isStable := false
+			lastLogTime := time.Now()
+			windscribeReconnecting := false
 
-		go func() {
-			client := &http.Client{Timeout: 5 * time.Second}
-			for {
+			// Launch background payload downloader to stimulate real packet flow through the adapter
+			probeCtx, cancelProbe := context.WithCancel(ctx)
+			defer cancelProbe()
+
+			probeBytes := minBytesThreshold
+			if probeBytes < 500*1024 {
+				probeBytes = 500 * 1024
+			} else if probeBytes > 5*1024*1024 {
+				probeBytes = 5 * 1024 * 1024
+			}
+
+			go func(chunkBytes uint64) {
+				client := &http.Client{Timeout: 8 * time.Second}
+				probeURL := fmt.Sprintf("https://speed.cloudflare.com/__down?bytes=%d", chunkBytes)
+				for {
+					select {
+					case <-probeCtx.Done():
+						return
+					default:
+					}
+
+					resp, err := client.Get(probeURL)
+					if err == nil && resp != nil {
+						_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, int64(chunkBytes)+65536))
+						_ = resp.Body.Close()
+					} else {
+						for i := 0; i < 3; i++ {
+							if r, e := client.Get("https://1.1.1.1/cdn-cgi/trace"); e == nil && r != nil {
+								_, _ = io.Copy(io.Discard, r.Body)
+								_ = r.Body.Close()
+							}
+						}
+					}
+
+					select {
+					case <-probeCtx.Done():
+						return
+					case <-time.After(2 * time.Second):
+					}
+				}
+			}(probeBytes)
+
+			for time.Since(startTime) < maxStabilizeTime {
 				select {
-				case <-probeCtx.Done():
-					return
-				default:
+				case <-ctx.Done():
+					break
+				case <-time.After(500 * time.Millisecond):
 				}
 
-				// Attempt 500KB test payload download chunk via Cloudflare CDN
-				resp, err := client.Get("https://speed.cloudflare.com/__down?bytes=500000")
-				if err == nil && resp != nil {
-					_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 512*1024))
-					_ = resp.Body.Close()
-					return
+				if ctx.Err() != nil {
+					break
 				}
 
-				// Fallback stimulus calls if CDN is blocked
-				for i := 0; i < 3; i++ {
-					if r, e := client.Get("https://1.1.1.1/cdn-cgi/trace"); e == nil && r != nil {
-						_, _ = io.Copy(io.Discard, r.Body)
-						_ = r.Body.Close()
+				// 1. Verify Windscribe CLI status: detect if Windscribe dropped and entered internal reconnect loop
+				statusOut, errStatus := o.worker.RunCLI(ctx, "status")
+				if errStatus == nil {
+					upperStatus := strings.ToUpper(statusOut)
+					if strings.Contains(upperStatus, "CONNECTING") {
+						windscribeReconnecting = true
+					} else if strings.Contains(upperStatus, "DISCONNECTED") {
+						break
 					}
 				}
 
-				select {
-				case <-probeCtx.Done():
-					return
-				case <-time.After(2 * time.Second):
+				curIn, curOut, isUp := getPlatformWindscribeTraffic()
+				if !adapterFound && isUp {
+					initialIn = curIn
+					initialOut = curOut
+					adapterFound = true
 				}
-			}
-		}()
-
-		for time.Since(startTime) < maxStabilizeTime {
-			select {
-			case <-ctx.Done():
-				break
-			case <-time.After(500 * time.Millisecond):
-			}
-
-			if ctx.Err() != nil {
-				break
-			}
-
-			// 1. Verify Windscribe CLI status: detect if Windscribe dropped and entered internal reconnect loop
-			statusOut, errStatus := o.worker.RunCLI(ctx, "status")
-			if errStatus == nil {
-				upperStatus := strings.ToUpper(statusOut)
-				if strings.Contains(upperStatus, "CONNECTING") {
-					windscribeReconnecting = true
-				} else if strings.Contains(upperStatus, "DISCONNECTED") {
-					break
+				var inDiff, outDiff uint64
+				if isUp {
+					if curIn < initialIn {
+						initialIn = 0
+					}
+					if curOut < initialOut {
+						initialOut = 0
+					}
+					inDiff = curIn - initialIn
+					outDiff = curOut - initialOut
 				}
-			}
+				totalDiff := inDiff + outDiff
 
-			curIn, curOut, isUp := getPlatformWindscribeTraffic()
-			var inDiff, outDiff uint64
-			if curIn >= initialIn {
-				inDiff = curIn - initialIn
-			}
-			if curOut >= initialOut {
-				outDiff = curOut - initialOut
-			}
-
-			// 2. Check if virtual adapter received >= 500 KB of payload traffic
-			if adapterFound && isUp && inDiff >= minBytesThreshold {
-				isStable = true
-				cancelProbe()
-				sendUpdate(EventUpdate{
-					Message: fmt.Sprintf("Tunnel stabilized in %.1fs (Virtual adapter traffic: ↓%.1f KB / ↑%.1f KB passed 500 KB threshold).",
-						time.Since(startTime).Seconds(), float64(inDiff)/1024, float64(outDiff)/1024),
-					Status: "Stabilized",
-				})
-				break
-			}
-
-			// Periodic UI status update every 3 seconds while waiting
-			if time.Since(lastLogTime) >= 3*time.Second {
-				lastLogTime = time.Now()
-				elapsedSec := int(time.Since(startTime).Seconds())
-				statusHint := ""
-				if windscribeReconnecting {
-					statusHint = " [Windscribe retrying internally]"
+				formatTransferred := func(b uint64) string {
+					if unit == "MB" || b >= 1024*1024 {
+						return fmt.Sprintf("%.2f MB", float64(b)/(1024*1024))
+					}
+					return fmt.Sprintf("%.1f KB", float64(b)/1024)
 				}
-				if adapterFound {
-					sendUpdate(EventUpdate{
-						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00)%s — Virtual adapter: ↓%.1f KB / 500 KB...",
-							currentTested, o.totalTasks, targetLoc, elapsedSec, statusHint, float64(inDiff)/1024),
-						Status: "Stabilizing...",
-					})
-				} else {
-					sendUpdate(EventUpdate{
-						Message: fmt.Sprintf("[%d/%d] Stabilizing %s (00:%02d / 01:00)%s...",
-							currentTested, o.totalTasks, targetLoc, elapsedSec, statusHint),
-						Status: "Stabilizing...",
-					})
-				}
-			}
 
-			// Fallback if adapter statistics are not exposed by OS (e.g. locked down permissions)
-			if !adapterFound && time.Since(startTime) >= 6*time.Second {
-				expectedCode := task.CountryCode
-				if expectedCode == "" {
-					expectedCode = countryNameToCode[task.Country]
-				}
-				if ok, _, _ := verifyTunnelDestination(ctx, expectedCode); ok {
+				// 2. Check if virtual adapter transferred >= target threshold of payload traffic
+				if adapterFound && isUp && totalDiff >= minBytesThreshold {
 					isStable = true
 					cancelProbe()
+					sendUpdate(EventUpdate{
+						Message: fmt.Sprintf("Tunnel stabilized in %.1fs (Transferred: %s [↓%.1f KB / ↑%.1f KB] passed %s threshold).",
+							time.Since(startTime).Seconds(), formatTransferred(totalDiff), float64(inDiff)/1024, float64(outDiff)/1024, targetLabel),
+						Status: "Stabilized",
+					})
 					break
 				}
-			}
-		}
-		cancelProbe()
 
-		// If adapter didn't reach 500 KB within 60s or connection dropped:
-		if !isStable || !o.worker.IsConnected(ctx) {
-			task.Status = "FLAPPING"
-			o.db.RecordResult(task)
-			completedResults = append(completedResults, task)
-			o.mu.Lock()
-			o.completedResults = completedResults
-			o.mu.Unlock()
+				// Periodic UI status update every 3 seconds while waiting
+				if time.Since(lastLogTime) >= 3*time.Second {
+					lastLogTime = time.Now()
+					elapsedSec := int(time.Since(startTime).Seconds())
+					elapsedStr := fmt.Sprintf("%02d:%02d", elapsedSec/60, elapsedSec%60)
+					statusHint := ""
+					if windscribeReconnecting {
+						statusHint = " [Windscribe retrying internally]"
+					}
+					if adapterFound {
+						sendUpdate(EventUpdate{
+							Message: fmt.Sprintf("[%d/%d] Stabilizing %s (%s / %s)%s — Adapter: %s (↓%.1f / ↑%.1f KB) / %s...",
+								currentTested, o.totalTasks, targetLoc, elapsedStr, totalWindowStr, statusHint,
+								formatTransferred(totalDiff), float64(inDiff)/1024, float64(outDiff)/1024, targetLabel),
+							Status: "Stabilizing...",
+						})
+					} else {
+						sendUpdate(EventUpdate{
+							Message: fmt.Sprintf("[%d/%d] Stabilizing %s (%s / %s)%s (waiting for virtual adapter)...",
+								currentTested, o.totalTasks, targetLoc, elapsedStr, totalWindowStr, statusHint),
+							Status: "Stabilizing...",
+						})
+					}
+				}
+
+				// Fallback if adapter statistics are not exposed by OS (e.g. locked down permissions)
+				if !adapterFound && time.Since(startTime) >= 6*time.Second {
+					expectedCode := task.CountryCode
+					if expectedCode == "" {
+						expectedCode = countryNameToCode[task.Country]
+					}
+					if ok, _, _ := verifyTunnelDestination(ctx, expectedCode); ok {
+						isStable = true
+						cancelProbe()
+						break
+					}
+				}
+			}
+			cancelProbe()
+
+			// If adapter didn't reach threshold within window or connection dropped:
+			if !isStable || !o.worker.IsConnected(ctx) {
+				task.Status = "FLAPPING"
+				o.db.RecordResult(task)
+				completedResults = append(completedResults, task)
+				o.mu.Lock()
+				o.completedResults = completedResults
+				o.mu.Unlock()
+				sendUpdate(EventUpdate{
+					Message:     fmt.Sprintf("Tunnel stalled on %s (%s:%d): virtual adapter traffic did not reach %s within %ds (stuck in blinking/reconnect phase). Disconnecting cleanly.", targetLoc, task.Protocol, task.Port, targetLabel, maxSec),
+					Status:      "Flapping",
+					TestedCount: len(completedResults),
+					TotalCount:  o.totalTasks,
+				})
+				discCtxFlap, discCancelFlap := context.WithTimeout(context.Background(), 8*time.Second)
+				_ = o.worker.EnsureDisconnected(discCtxFlap)
+				discCancelFlap()
+				continue
+			}
+		} else {
 			sendUpdate(EventUpdate{
-				Message:     fmt.Sprintf("Tunnel stalled on %s (%s:%d): virtual adapter traffic did not reach 500 KB within 60s (stuck in blinking/reconnect phase). Disconnecting cleanly.", targetLoc, task.Protocol, task.Port),
-				Status:      "Flapping",
-				TestedCount: len(completedResults),
-				TotalCount:  o.totalTasks,
+				Message: fmt.Sprintf("[%d/%d] Handshake reported on %s (%s:%d) (Stabilization check disabled; proceeding).",
+					currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port),
+				Status: "Connected",
 			})
-			discCtxFlap, discCancelFlap := context.WithTimeout(context.Background(), 8*time.Second)
-			_ = o.worker.EnsureDisconnected(discCtxFlap)
-			discCancelFlap()
-			continue
 		}
 
 		// Step 1.6: Autonomous Tunnel Integrity & Route Leak Verification
