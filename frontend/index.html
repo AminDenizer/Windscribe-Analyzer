@@ -12,8 +12,8 @@
         <div class="sidebar">
             <!-- Pinned Logo Header (Locked at top, never scrolls) -->
             <div class="logo-area">
-                <h2><span class="glow">W</span>indscribe <span class="glow">A</span>nalyzer</h2>
-                <span class="badge-version">Pro</span>
+                <h2><span data-i18n="appTitlePrefix">Windscribe</span> <span class="glow" data-i18n="appTitleSuffix">Analyzer</span></h2>
+                <span class="badge-version" data-i18n="badgePro">Pro</span>
             </div>
             
             <!-- Scrollable Configuration Area -->
@@ -21,8 +21,8 @@
                 <!-- Network Country & ISP / Operator -->
                 <div class="form-group">
                     <div class="label-with-action">
-                        <label for="networkCountry">Network Country</label>
-                        <button type="button" id="btnAddCountry" class="small-btn" title="Add Custom Country">+ Custom</button>
+                        <label for="networkCountry" data-i18n="networkCountry">Network Country</label>
+                        <button type="button" id="btnAddCountry" class="small-btn" title="Add Custom Country" data-i18n="customBtn">+ Custom</button>
                     </div>
                     <select id="networkCountry" class="modern-select">
                         <option value="Iran" selected>Iran</option>
@@ -40,8 +40,8 @@
 
                 <div class="form-group">
                     <div class="label-with-action">
-                        <label for="networkIsp">Network ISP / Operator</label>
-                        <button type="button" id="btnAddIsp" class="small-btn" title="Add Custom Operator">+ Custom</button>
+                        <label for="networkIsp" data-i18n="networkIsp">Network ISP / Operator</label>
+                        <button type="button" id="btnAddIsp" class="small-btn" title="Add Custom Operator" data-i18n="customBtn">+ Custom</button>
                     </div>
                     <select id="networkIsp" class="modern-select">
                         <!-- Populated dynamically based on selected country -->
@@ -56,11 +56,11 @@
                 <!-- Anti-Censorship Panel -->
                 <div class="section-card">
                     <div class="section-header">
-                        <span>🛡️ Anti-Censorship</span>
+                        <span data-i18n="antiCensorship">Anti-Censorship</span>
                     </div>
 
                     <div class="form-group toggle-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 12px;">
-                        <label for="masterInjection" style="font-weight: 700; color: #58a6ff;">Live Engine Injection</label>
+                        <label for="masterInjection" style="font-weight: 700; color: #58a6ff;" data-i18n="liveEngineInjection">Live Engine Injection</label>
                         <label class="switch">
                             <input type="checkbox" id="masterInjection" checked>
                             <span class="slider round"></span>
@@ -68,24 +68,24 @@
                     </div>
 
                     <div id="manualModeBanner" style="display: none; margin-bottom: 12px; padding: 8px 10px; border-radius: 6px; background: rgba(210, 153, 34, 0.1); border: 1px solid rgba(210, 153, 34, 0.3); font-size: 11px; color: #d29922; line-height: 1.4;">
-                        <div style="margin-bottom: 6px;"><strong>Manual Mode:</strong> Client settings won't be overwritten. Fields below are saved to reports as metadata.</div>
-                        <button type="button" id="btnReadClientSettings" class="small-btn" style="width: 100%; padding: 5px 8px; background: rgba(56, 139, 253, 0.15); border: 1px solid rgba(56, 139, 253, 0.4); color: #58a6ff; border-radius: 5px; cursor: pointer; font-weight: 600;">📥 Read Active Client Settings</button>
+                        <div style="margin-bottom: 6px;" data-i18n="manualModeDesc">Client settings won't be overwritten. Fields below are saved to reports as metadata.</div>
+                        <button type="button" id="btnReadClientSettings" class="small-btn" style="width: 100%; padding: 5px 8px; background: rgba(56, 139, 253, 0.15); border: 1px solid rgba(56, 139, 253, 0.4); color: #58a6ff; border-radius: 5px; cursor: pointer; font-weight: 600;" data-i18n="readClientSettings">📥 Read Active Client Settings</button>
                     </div>
 
                     <div id="injectionBody" style="display: flex; flex-direction: column; gap: 12px;">
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label for="protocolTweaksMode" style="margin-bottom: 6px; display: block;">Protocol Tweaks</label>
+                            <label for="protocolTweaksMode" style="margin-bottom: 6px; display: block;" data-i18n="protocolTweaks">Protocol Tweaks</label>
                             <select id="protocolTweaksMode" class="modern-select">
                                 <option value="Enabled" selected>Enabled</option>
                                 <option value="Auto">Auto</option>
                                 <option value="Disabled">Disabled</option>
                             </select>
-                            <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
+                            <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;" data-i18n="protocolTweaksDesc">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
                         </div>
 
                         <div class="form-group collapsible-field" id="amneziaGroup" style="margin-bottom: 0;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                                <label for="amneziaConfig" style="margin-bottom: 0;">Amnezia Config</label>
+                                <label for="amneziaConfig" style="margin-bottom: 0;" data-i18n="amneziaConfig">Amnezia Config</label>
                                 <button id="btnRefreshAmnezia" type="button" class="icon-btn sync-btn" title="Refresh Amnezia Configs">
                                     <svg class="sync-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
@@ -104,11 +104,11 @@
                                 <option value="F - Baseline With Junk">F - Baseline With Junk</option>
                                 <option value="G - Popular Russia Website with Junk">G - Popular Russia Website with Junk</option>
                             </select>
-                            <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;">Obfuscation presets applied to WireGuard, OpenVPN, and Stealth.</div>
+                            <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;" data-i18n="amneziaDesc">Obfuscation presets applied to WireGuard, OpenVPN, and Stealth.</div>
                         </div>
 
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label style="margin-bottom: 6px; display: block;">Server Routing</label>
+                            <label style="margin-bottom: 6px; display: block;" data-i18n="serverRouting">Server Routing</label>
                             <select id="serverRouting" class="modern-select">
                                 <option value="Auto">Auto</option>
                                 <option value="Regular" selected>Regular</option>
@@ -117,7 +117,7 @@
                         </div>
 
                         <div class="form-group toggle-row" style="margin-top: 4px; margin-bottom: 4px; padding: 4px 0;">
-                            <label for="largeTls">Large TLS Padding</label>
+                            <label for="largeTls" data-i18n="largeTls">Large TLS Padding</label>
                             <label class="switch">
                                 <input type="checkbox" id="largeTls">
                                 <span class="slider round"></span>
@@ -125,13 +125,13 @@
                         </div>
 
                         <div class="form-group" id="sniContainer" style="margin-bottom: 0;">
-                            <label style="margin-bottom: 6px; display: block;">Custom SNI Domain</label>
+                            <label style="margin-bottom: 6px; display: block;" data-i18n="customSni">Custom SNI Domain</label>
                             <input type="text" id="customSni" class="modern-input" placeholder="example.com (optional)">
                             <small class="hint-text" style="display: block; margin-top: 6px;">Applies to Stealth and Wstunnel protocols only.</small>
                         </div>
 
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label style="margin-bottom: 6px; display: block;">Internal DNS</label>
+                            <label style="margin-bottom: 6px; display: block;" data-i18n="internalDns">Internal DNS</label>
                             <select id="internalDns" class="modern-select">
                                 <option value="Google">Google (8.8.8.8)</option>
                                 <option value="OS Default">OS Default</option>
@@ -154,10 +154,10 @@
                 
                 <div class="form-group" id="locationsWrapper">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                        <label style="margin-bottom: 0;">Locations</label>
+                        <label style="margin-bottom: 0;" data-i18n="locationsLabel">Locations</label>
                         <div style="display:flex; gap:4px; align-items:center;">
-                            <button id="btnSelectAllLocs" type="button" class="small-btn">All</button> 
-                            <button id="btnClearLocs" type="button" class="small-btn">Clear</button>
+                            <button id="btnSelectAllLocs" type="button" class="small-btn" data-i18n="btnAll">All</button> 
+                            <button id="btnClearLocs" type="button" class="small-btn" data-i18n="btnClear">Clear</button>
                             <button id="btnRefreshLocs" type="button" class="icon-btn sync-btn" title="Refresh Locations from Online API">
                                 <svg class="sync-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
@@ -176,7 +176,7 @@
                     <div class="protocols-master-header">
                         <label class="master-checkbox-label">
                             <input type="checkbox" id="cbSelectAllProtocols">
-                            <span class="master-title">Protocols & Ports</span>
+                            <span class="master-title" data-i18n="protocolsPorts">Protocols & Ports</span>
                         </label>
                         <span class="protocols-count-badge" id="protocolsCountBadge">0 Active</span>
                     </div>
@@ -184,10 +184,10 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Timeouts (sec)</label>
+                    <label data-i18n="timeoutsSec">Timeouts (sec)</label>
                     <div style="display:flex; gap:10px;">
                         <div style="flex:1;">
-                            <span class="sub-label">Connect</span>
+                            <span class="sub-label" data-i18n="connectLabel">Connect</span>
                             <div class="stepper-box">
                                 <button type="button" class="step-btn" data-step="down" data-target="connTimeout">−</button>
                                 <input type="number" id="connTimeout" class="modern-input stepper-input" value="25" min="5" max="120">
@@ -195,7 +195,7 @@
                             </div>
                         </div>
                         <div style="flex:1;">
-                            <span class="sub-label">Wait Speed</span>
+                            <span class="sub-label" data-i18n="waitSpeedLabel">Wait Speed</span>
                             <div class="stepper-box">
                                 <button type="button" class="step-btn" data-step="down" data-target="speedWait">−</button>
                                 <input type="number" id="speedWait" class="modern-input stepper-input" value="5" min="1" max="30">
@@ -208,13 +208,13 @@
                     <div class="stabilize-header">
                         <label class="master-checkbox-label" style="margin:0; cursor:pointer;">
                             <input type="checkbox" id="stabilizeEnabled" checked>
-                            <span>Tunnel Stabilization</span>
+                            <span data-i18n="tunnelStabilization">Tunnel Stabilization</span>
                         </label>
                         <button type="button" id="stabilizeUnitBtn" class="unit-badge-btn" title="Toggle KB / MB">KB</button>
                     </div>
                     <div id="stabilizeControlsRow" class="collapsible-field" style="display:flex; gap:10px; margin-top:8px;">
                         <div style="flex:1;">
-                            <span class="sub-label">Target (<span id="stabilizeUnitLabel">KB</span>)</span>
+                            <span class="sub-label"><span data-i18n="targetLabel">Target</span> (<span id="stabilizeUnitLabel">KB</span>)</span>
                             <div class="stepper-box">
                                 <button type="button" class="step-btn" data-step="down" data-target="stabilizeMinBytes">−</button>
                                 <input type="number" id="stabilizeMinBytes" class="modern-input stepper-input" value="500" min="1" max="100000">
@@ -222,7 +222,7 @@
                             </div>
                         </div>
                         <div style="flex:1;">
-                            <span class="sub-label">Window (sec)</span>
+                            <span class="sub-label" data-i18n="windowSecLabel">Window (sec)</span>
                             <div class="stepper-box">
                                 <button type="button" class="step-btn" data-step="down" data-target="stabilizeTimeout">−</button>
                                 <input type="number" id="stabilizeTimeout" class="modern-input stepper-input" value="60" min="5" max="300">
@@ -232,7 +232,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="speedEngine">Speedtest Engine</label>
+                    <label for="speedEngine" data-i18n="speedEngineLabel">Speedtest Engine</label>
                     <select id="speedEngine" class="modern-select">
                         <option value="ookla" selected>Ookla Speedtest (Default)</option>
                         <option value="cloudflare">Cloudflare Speedtest (CDN)</option>
@@ -241,29 +241,29 @@
                 </div>
                 <div class="form-group stabilize-card">
                     <div class="stabilize-header" style="margin-bottom: 6px;">
-                        <span class="sub-label" style="margin:0; font-weight:600; color:#c9d1d9;">Execution Modes</span>
+                        <span class="sub-label" style="margin:0; font-weight:600; color:#c9d1d9;" data-i18n="executionModes">Execution Modes</span>
                     </div>
                     <label class="master-checkbox-label" style="margin-bottom: 6px; cursor:pointer; font-size:12px;">
                         <input type="checkbox" id="shuffleAll">
-                        <span>Shuffle All (Full Matrix)</span>
+                        <span data-i18n="shuffleAll">Shuffle All (Full Matrix)</span>
                     </label>
                     <div style="padding-left: 16px;">
                         <label class="master-checkbox-label" style="margin-bottom: 6px; cursor:pointer; font-size:12px;">
                             <input type="checkbox" id="shuffleLocations">
-                            <span>Shuffle Locations (Anti-DPI)</span>
+                            <span data-i18n="shuffleLocations">Shuffle Locations (Anti-DPI)</span>
                         </label>
                         <label class="master-checkbox-label" style="margin-bottom: 6px; cursor:pointer; font-size:12px;">
                             <input type="checkbox" id="shuffleProtocols">
-                            <span>Shuffle Protocols / Ports</span>
+                            <span data-i18n="shuffleProtocols">Shuffle Protocols / Ports</span>
                         </label>
                     </div>
                     <label class="master-checkbox-label" style="margin-bottom: 0; cursor:pointer; font-size:12px;">
                         <input type="checkbox" id="connectAndHold">
-                        <span>Connect &amp; Hold (Stop on First Success)</span>
+                        <span data-i18n="connectAndHold">Connect &amp; Hold (Stop on First Success)</span>
                     </label>
                 </div>
                 <div style="margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: rgba(56, 139, 253, 0.08); border: 1px solid rgba(56, 139, 253, 0.25); font-size: 11px; color: #8b949e; line-height: 1.4;">
-                    <strong style="color: #58a6ff;">🛡️ Firewall Tip:</strong> Set Windscribe Firewall to <b>Always On</b> (not Always On+) or <b>Auto → Before Connection</b> to prevent speedtest route leaks.
+                    <strong style="color: #58a6ff;" data-i18n="firewallTipTitle">Firewall Tip:</strong> <span data-i18n="firewallTipBody">Set Windscribe Firewall to Always On (not Always On+) or Auto → Before Connection to prevent speedtest route leaks.</span>
                 </div>
             </div>
 
@@ -285,15 +285,20 @@
                 <div class="status-summary">
                     <span class="dashboard-title" data-i18n="liveMetrics">Live Metrics</span>
                 </div>
-                <div class="header-actions">
-                    <button class="btn excel-btn" id="btnExportExcel" disabled title="Automatically generated after test finishes">
+                <div class="header-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
+                    <button class="btn excel-btn" id="btnExportExcel" disabled title="Automatically generated after test finishes" style="white-space:nowrap;">
                         <svg class="excel-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
                             <rect x="3" y="3" width="18" height="18" rx="3" fill="#107C41" stroke="#238636" stroke-width="1.5"/>
                             <path d="M8 7.5L11.5 12L8 16.5H10.5L12.5 13.8L14.5 16.5H17L13.5 12L17 7.5H14.5L12.5 10.2L10.5 7.5H8Z" fill="#FFFFFF"/>
                         </svg>
                         <span data-i18n="openExcel">Open Excel (.xlsx)</span>
                     </button>
-                    <button class="small-btn" id="btnOpenSettings" type="button" title="Settings & Language" style="padding: 7px 10px; font-size: 0.9rem;">⚙️</button>
+                    <button class="settings-icon-btn" id="btnOpenSettings" type="button" title="Settings & Language">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -426,7 +431,19 @@
 
     <!-- Floating Test Matrix Counter -->
     <div id="floatingMatrixPill" class="floating-matrix-pill" title="Live Test Matrix & Estimated Time">
-        <span id="floatingMatrixText">🎯 0 Locs • 0 Protos • 0 Ports ➔ 0 Tests | ⏱️ Est: ~0m</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        <span id="floatingMatrixText">0 Locs • 0 Protos • 0 Ports ➔ 0 Tests</span>
+        <span class="pill-divider"></span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span id="floatingMatrixEta">Est: ~0m</span>
     </div>
 
     <!-- Settings & Custom CLI Path Modal -->

@@ -434,11 +434,11 @@ input:checked + .slider:before {
     background: #0d1117;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
-    padding: 14px 16px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 108px;
+    min-height: 124px;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -524,13 +524,13 @@ input:checked + .slider:before {
 }
 
 .value {
-    font-size: 1.8rem;
+    font-size: 1.35rem;
     font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: -0.5px;
-    line-height: 1.1;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    letter-spacing: -0.3px;
+    line-height: 1.25;
 }
 
 .ping .value { color: #f2cc60; }
@@ -1327,28 +1327,56 @@ input[type="number"] {
     pointer-events: none;
 }
 
+/* Settings Icon Button */
+.settings-icon-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: #8b949e;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.settings-icon-btn:hover {
+    color: #f0f6fc;
+    background: rgba(56, 139, 253, 0.14);
+    border-color: rgba(56, 139, 253, 0.45);
+}
+
 /* Floating Test Matrix Counter */
 .floating-matrix-pill {
     position: fixed;
-    bottom: 16px;
-    right: 22px;
-    background: rgba(22, 27, 34, 0.92);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(56, 139, 253, 0.45);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    bottom: 18px;
+    right: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(13, 17, 23, 0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(56, 139, 253, 0.35);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
     color: #e6edf3;
-    padding: 7px 14px;
+    padding: 8px 14px;
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
     z-index: 900;
     pointer-events: none;
     transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-[dir="rtl"] .floating-matrix-pill {
-    right: auto;
-    left: 22px;
+.pill-divider {
+    width: 1px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.14);
 }
 
 /* Language Onboarding Grid */

@@ -1299,6 +1299,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Floating Test Matrix Counter & ETA
     function updateFloatingMatrix() {
         const pillText = document.getElementById("floatingMatrixText");
+        const pillEta = document.getElementById("floatingMatrixEta");
         if (!pillText) return;
         const lang = localStorage.getItem("ws_lang") || "en";
         const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -1315,7 +1316,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const perTestSec = 10 + speedWait + (engine === "both" ? 22 : 12);
         const estMinutes = totalTests > 0 ? Math.max(1, Math.round((totalTests * perTestSec) / 60)) : 0;
 
-        pillText.textContent = `🎯 ${t.matrixPrefix}: ${locsCount} ${t.matrixLocs} • ${activeProtos} ${t.matrixProtos} • ${portsCount} ${t.matrixPorts} ➔ ${totalTests} ${t.matrixTests} | ⏱️ ${t.matrixEst}: ~${estMinutes}m`;
+        pillText.textContent = `${t.matrixPrefix}: ${locsCount} ${t.matrixLocs} • ${activeProtos} ${t.matrixProtos} • ${portsCount} ${t.matrixPorts} → ${totalTests} ${t.matrixTests}`;
+        if (pillEta) {
+            pillEta.textContent = `${t.matrixEst}: ~${estMinutes}m`;
+        }
     }
 
     document.addEventListener("change", (e) => {
