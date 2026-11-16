@@ -552,6 +552,10 @@ type MIB_IF_TABLE2 struct {
 }
 
 func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
+	return getPlatformWindscribeTrafficForProtocol("")
+}
+
+func getPlatformWindscribeTrafficForProtocol(protocol string) (uint64, uint64, bool) {
 	var tablePtr *MIB_IF_TABLE2
 	r1, _, _ := procGetIfTable2.Call(uintptr(unsafe.Pointer(&tablePtr)))
 	if r1 != 0 {
@@ -559,6 +563,7 @@ func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 	}
 	defer procFreeMibTable.Call(uintptr(unsafe.Pointer(tablePtr)))
 
+	proto := strings.ToLower(strings.TrimSpace(protocol))
 	entries := (*[1 << 16]MIB_IF_ROW2)(unsafe.Pointer(&tablePtr.Table[0]))[:tablePtr.NumEntries:tablePtr.NumEntries]
 	var totalIn, totalOut uint64
 	found := false
@@ -572,10 +577,25 @@ func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 		if strings.Contains(nameLower, "filter") || strings.Contains(nameLower, "scheduler") || strings.Contains(nameLower, "npcap") || strings.Contains(nameLower, "lightweight") {
 			continue
 		}
-		if strings.Contains(nameLower, "windscribe") ||
-			strings.Contains(nameLower, "wintun") ||
-			strings.Contains(nameLower, "wireguard") ||
-			strings.Contains(nameLower, "wan miniport (ikev2)") {
+
+		matched := false
+		switch proto {
+		case "ikev2":
+			matched = strings.Contains(nameLower, "wan miniport (ikev2)") || strings.Contains(nameLower, "windscribeikev2")
+		case "wireguard":
+			matched = strings.Contains(nameLower, "windscribewireguard") || strings.Contains(nameLower, "wintun") || strings.Contains(nameLower, "wireguard")
+		case "udp", "tcp", "stealth", "wstunnel":
+			matched = strings.Contains(nameLower, "windscribeopenvpn") ||
+				strings.Contains(nameLower, "windscribevpn") ||
+				(strings.Contains(nameLower, "windscribe") && !strings.Contains(nameLower, "wireguard") && !strings.Contains(nameLower, "ikev2"))
+		default:
+			matched = strings.Contains(nameLower, "windscribe") ||
+				strings.Contains(nameLower, "wintun") ||
+				strings.Contains(nameLower, "wireguard") ||
+				strings.Contains(nameLower, "wan miniport (ikev2)")
+		}
+
+		if matched {
 			totalIn += row.InOctets
 			totalOut += row.OutOctets
 			found = true

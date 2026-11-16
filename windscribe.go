@@ -121,7 +121,7 @@ func (w *WindscribeWorker) WaitForConnection(ctx context.Context, timeout time.D
 func (w *WindscribeWorker) WaitForConnectionWithRetry(ctx context.Context, timeout time.Duration, city string, protocol string, port int, onRetry func(string)) (bool, float64, error) {
 	start := time.Now()
 	sawConnecting := false
-	retried := false
+	retryCount := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -141,14 +141,19 @@ func (w *WindscribeWorker) WaitForConnectionWithRetry(ctx context.Context, timeo
 				if strings.Contains(upperOut, "CONNECTING") {
 					sawConnecting = true
 				} else if strings.Contains(upperOut, "DISCONNECTED") && !sawConnecting && city != "" {
-					if !retried && elapsed >= 4*time.Second {
-						retried = true
+					if retryCount == 0 && elapsed >= 4*time.Second {
+						retryCount = 1
 						if onRetry != nil {
 							onRetry(fmt.Sprintf("Windscribe remained disconnected on %s (%s:%d); re-issuing connect command...", city, protocol, port))
 						}
 						_ = w.Connect(ctx, city, protocol, port)
-					} else if retried && elapsed >= 10*time.Second {
-						return false, elapsed.Seconds(), fmt.Errorf("windscribe failed to initiate connection (remained disconnected)")
+					} else if retryCount == 1 && elapsed >= 12*time.Second && timeout >= 16*time.Second {
+						retryCount = 2
+						if onRetry != nil {
+							onRetry(fmt.Sprintf("Windscribe still disconnected on %s (%s:%d); resetting state and retrying connect...", city, protocol, port))
+						}
+						_ = w.EnsureDisconnected(ctx)
+						_ = w.Connect(ctx, city, protocol, port)
 					}
 				}
 			}

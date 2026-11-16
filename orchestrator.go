@@ -344,7 +344,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			targetLabel := fmt.Sprintf("%d %s", targetVal, unit)
 			totalWindowStr := fmt.Sprintf("%02d:%02d", maxSec/60, maxSec%60)
 
-			initialIn, initialOut, adapterFound := getPlatformWindscribeTraffic()
+			initialIn, initialOut, adapterFound := getPlatformWindscribeTrafficForProtocol(task.Protocol)
 
 			sendUpdate(EventUpdate{
 				Message: fmt.Sprintf("[%d/%d] Handshake reported on %s (%s:%d). Monitoring virtual adapter traffic flow (up to %ds, target: %s)...",
@@ -422,7 +422,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					}
 				}
 
-				curIn, curOut, isUp := getPlatformWindscribeTraffic()
+				curIn, curOut, isUp := getPlatformWindscribeTrafficForProtocol(task.Protocol)
 				if !adapterFound && isUp {
 					initialIn = curIn
 					initialOut = curOut

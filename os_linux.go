@@ -288,6 +288,10 @@ func applyPlatformConnectionTweaks(ctx context.Context, config TestConfig, logge
 	return nil
 }
 
+func getPlatformWindscribeTrafficForProtocol(_ string) (uint64, uint64, bool) {
+	return getPlatformWindscribeTraffic()
+}
+
 func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 	data, err := os.ReadFile("/proc/net/dev")
 	if err != nil {

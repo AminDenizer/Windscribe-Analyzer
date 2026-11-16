@@ -93,6 +93,10 @@ func getPlatformWindscribeTraffic() (uint64, uint64, bool) {
 	return 0, 0, false
 }
 
+func getPlatformWindscribeTrafficForProtocol(_ string) (uint64, uint64, bool) {
+	return getPlatformWindscribeTraffic()
+}
+
 func readPlatformClientSettings() (*ClientSettingsSnapshot, error) {
 	return nil, fmt.Errorf("reading client settings is not yet supported on macOS")
 }
