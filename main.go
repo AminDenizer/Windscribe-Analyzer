@@ -17,9 +17,11 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "windscribe-ultra-tester",
-		Width:  1024,
-		Height: 768,
+		Title:     "windscribe-ultra-tester",
+		Width:     1200,
+		Height:    800,
+		MinWidth:  980,
+		MinHeight: 680,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

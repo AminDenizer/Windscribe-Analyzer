@@ -382,3 +382,19 @@ func (a *App) GetOS() string {
 func (a *App) ReadClientSettings() (*ClientSettingsSnapshot, error) {
 	return readPlatformClientSettings()
 }
+
+// GetCustomCLIPath returns the currently configured windscribe-cli executable path
+func (a *App) GetCustomCLIPath() string {
+	return a.worker.cliPath
+}
+
+// SetCustomCLIPath overrides the windscribe-cli path (or resets to default if empty)
+func (a *App) SetCustomCLIPath(customPath string) string {
+	trimmed := strings.TrimSpace(customPath)
+	if trimmed == "" {
+		a.worker.cliPath = defaultWindscribeCLIPath()
+	} else {
+		a.worker.cliPath = trimmed
+	}
+	return a.worker.cliPath
+}

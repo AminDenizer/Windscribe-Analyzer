@@ -1308,3 +1308,70 @@ input[type="number"] {
     border-top: 1px solid #21262d;
     background: rgba(255, 255, 255, 0.015);
 }
+
+/* Hide Instead of Lock Smooth Accordion */
+.collapsible-field {
+    max-height: 220px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease, padding 0.25s ease;
+}
+
+.collapsible-field.is-collapsed {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    pointer-events: none;
+}
+
+/* Floating Test Matrix Counter */
+.floating-matrix-pill {
+    position: fixed;
+    bottom: 16px;
+    right: 22px;
+    background: rgba(22, 27, 34, 0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(56, 139, 253, 0.45);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    color: #e6edf3;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    z-index: 900;
+    pointer-events: none;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+[dir="rtl"] .floating-matrix-pill {
+    right: auto;
+    left: 22px;
+}
+
+/* Language Onboarding Grid */
+.lang-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.lang-choice-btn {
+    padding: 12px 10px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #f0f6fc;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.lang-choice-btn:hover {
+    background: rgba(56, 139, 253, 0.16);
+    border-color: #58a6ff;
+    transform: translateY(-1px);
+}

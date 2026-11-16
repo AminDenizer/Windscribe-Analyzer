@@ -1,3 +1,5 @@
+import { TRANSLATIONS, countryCodeToFlag } from "./i18n.js";
+
 const VALID_PROTOCOLS = {
     "wireguard": [443, 80, 53, 123, 1194, 65142],
     "udp": [443, 80, 53, 123, 1194, 54783],
@@ -335,7 +337,7 @@ function updateTweaksState() {
     const isEnabled = (val === "enabled");
 
     if (amneziaGroup) {
-        amneziaGroup.style.display = isEnabled ? "block" : "none";
+        amneziaGroup.classList.toggle("is-collapsed", !isEnabled);
     }
     if (amneziaSelect) amneziaSelect.disabled = !isEnabled;
     if (btnRefresh) btnRefresh.disabled = !isEnabled;
@@ -408,7 +410,7 @@ function appendConnectedRow(item) {
     const presetVal = item.antiCensorshipMode && item.antiCensorshipMode !== "-" && item.antiCensorshipMode !== "None" ? item.antiCensorshipMode : "-";
 
     row.innerHTML = `
-        <td class="cell-loc"><span>${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || item.location || "")}</span></td>
+        <td class="cell-loc"><span>${countryCodeToFlag(item.countryCode)} ${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || item.location || "")}</span></td>
         <td class="cell-proto">${escapeHtml(item.protocol)}:${item.port}</td>
         <td class="cell-preset" style="color:#79c0ff; font-size:0.75rem;">${escapeHtml(presetVal)}</td>
         <td class="cell-ping">${pingVal}</td>
@@ -652,7 +654,8 @@ async function fetchLocations(forceOnline = false) {
                 
                 countryHeader.appendChild(cIcon);
                 countryHeader.appendChild(cCb);
-                countryHeader.appendChild(document.createTextNode(` ${country}`));
+                const cFlag = countryCodeToFlag(locations[0]?.countryCode);
+                countryHeader.appendChild(document.createTextNode(` ${cFlag} ${country}`));
                 
                 const locsDiv = document.createElement('div');
                 locsDiv.className = 'tree-locations';
@@ -1226,10 +1229,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const syncStabilizeDisabledState = () => {
         const enabled = stabilizeEnabled ? stabilizeEnabled.checked : true;
-        if (stabilizeControlsRow) stabilizeControlsRow.classList.toggle("is-disabled", !enabled);
+        if (stabilizeControlsRow) {
+            stabilizeControlsRow.classList.toggle("is-disabled", !enabled);
+            stabilizeControlsRow.classList.toggle("is-collapsed", !enabled);
+        }
         if (stabilizeUnitBtn) stabilizeUnitBtn.disabled = !enabled;
         if (stabilizeMinBytes) stabilizeMinBytes.disabled = !enabled;
         if (stabilizeTimeout) stabilizeTimeout.disabled = !enabled;
+        updateFloatingMatrix();
     };
 
     if (stabilizeEnabled) {
@@ -1287,5 +1294,137 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         shuffleLocs.addEventListener("change", syncShuffleMaster);
         shuffleProtos.addEventListener("change", syncShuffleMaster);
+    }
+
+    // Floating Test Matrix Counter & ETA
+    function updateFloatingMatrix() {
+        const pillText = document.getElementById("floatingMatrixText");
+        if (!pillText) return;
+        const lang = localStorage.getItem("ws_lang") || "en";
+        const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+
+        const locsCount = document.querySelectorAll(".cb-location:checked").length;
+        const activeProtos = Object.keys(VALID_PROTOCOLS).filter(proto =>
+            document.querySelectorAll(`.cb-port-${proto}:checked`).length > 0
+        ).length;
+        const portsCount = document.querySelectorAll('[class*="cb-port-"]:checked').length;
+        const totalTests = locsCount * portsCount;
+
+        const speedWait = parseInt(document.getElementById("speedWait")?.value) || 5;
+        const engine = document.getElementById("speedEngine")?.value || "ookla";
+        const perTestSec = 10 + speedWait + (engine === "both" ? 22 : 12);
+        const estMinutes = totalTests > 0 ? Math.max(1, Math.round((totalTests * perTestSec) / 60)) : 0;
+
+        pillText.textContent = `🎯 ${t.matrixPrefix}: ${locsCount} ${t.matrixLocs} • ${activeProtos} ${t.matrixProtos} • ${portsCount} ${t.matrixPorts} ➔ ${totalTests} ${t.matrixTests} | ⏱️ ${t.matrixEst}: ~${estMinutes}m`;
+    }
+
+    document.addEventListener("change", (e) => {
+        if (e.target && (
+            e.target.classList.contains("cb-location") ||
+            e.target.classList.contains("cb-country") ||
+            e.target.classList.contains("cb-continent") ||
+            e.target.classList.contains("cb-proto") ||
+            e.target.id === "cbSelectAllProtocols" ||
+            e.target.id === "speedEngine" ||
+            Array.from(e.target.classList).some(c => c.startsWith("cb-port-"))
+        )) {
+            updateFloatingMatrix();
+        }
+    });
+    updateFloatingMatrix();
+
+    // Multi-Language & Settings Modal + Custom CLI Path
+    function applyLanguage(langCode) {
+        const lang = TRANSLATIONS[langCode] ? langCode : "en";
+        const dict = TRANSLATIONS[lang];
+        localStorage.setItem("ws_lang", lang);
+        document.documentElement.dir = dict.dir;
+        document.documentElement.lang = lang;
+
+        document.querySelectorAll("[data-i18n]").forEach(el => {
+            const key = el.getAttribute("data-i18n");
+            if (dict[key]) el.textContent = dict[key];
+        });
+
+        const btnStartEl = document.getElementById("btnStart");
+        if (btnStartEl && !btnStartEl.disabled) btnStartEl.textContent = dict.startAnalyzing;
+        const btnStopEl = document.getElementById("btnStop");
+        if (btnStopEl && btnStopEl.disabled) btnStopEl.textContent = dict.stopSession;
+
+        const langSel = document.getElementById("settingsLangSelect");
+        if (langSel) langSel.value = lang;
+        updateFloatingMatrix();
+    }
+
+    const btnOpenSettings = document.getElementById("btnOpenSettings");
+    const settingsModal = document.getElementById("settingsModal");
+    const settingsModalClose = document.getElementById("settingsModalClose");
+    const settingsSaveBtn = document.getElementById("settingsSaveBtn");
+    const settingsResetBtn = document.getElementById("settingsResetBtn");
+    const settingsLangSelect = document.getElementById("settingsLangSelect");
+    const settingsCliPath = document.getElementById("settingsCliPath");
+
+    const savedCliPath = localStorage.getItem("ws_custom_cli_path") || "";
+    if (savedCliPath && window.go?.main?.App?.SetCustomCLIPath) {
+        window.go.main.App.SetCustomCLIPath(savedCliPath);
+    }
+
+    if (btnOpenSettings && settingsModal) {
+        btnOpenSettings.addEventListener("click", async () => {
+            if (settingsLangSelect) settingsLangSelect.value = localStorage.getItem("ws_lang") || "en";
+            if (settingsCliPath) {
+                let currentPath = localStorage.getItem("ws_custom_cli_path") || "";
+                if (!currentPath && window.go?.main?.App?.GetCustomCLIPath) {
+                    currentPath = await window.go.main.App.GetCustomCLIPath();
+                }
+                settingsCliPath.value = currentPath;
+            }
+            settingsModal.style.display = "flex";
+        });
+    }
+    if (settingsModalClose) settingsModalClose.addEventListener("click", () => { settingsModal.style.display = "none"; });
+    if (settingsModal) {
+        settingsModal.addEventListener("click", (e) => {
+            if (e.target === settingsModal) settingsModal.style.display = "none";
+        });
+    }
+    if (settingsSaveBtn) {
+        settingsSaveBtn.addEventListener("click", async () => {
+            if (settingsLangSelect) applyLanguage(settingsLangSelect.value);
+            if (settingsCliPath) {
+                const val = settingsCliPath.value.trim();
+                localStorage.setItem("ws_custom_cli_path", val);
+                if (window.go?.main?.App?.SetCustomCLIPath) {
+                    const resolved = await window.go.main.App.SetCustomCLIPath(val);
+                    logMsg(`[Settings] Windscribe CLI path set to: ${resolved}`, "log-info");
+                }
+            }
+            if (settingsModal) settingsModal.style.display = "none";
+        });
+    }
+    if (settingsResetBtn) {
+        settingsResetBtn.addEventListener("click", async () => {
+            localStorage.removeItem("ws_custom_cli_path");
+            if (window.go?.main?.App?.SetCustomCLIPath) {
+                const resolved = await window.go.main.App.SetCustomCLIPath("");
+                if (settingsCliPath) settingsCliPath.value = resolved;
+                logMsg(`[Settings] Windscribe CLI path reset to default: ${resolved}`, "log-info");
+            }
+        });
+    }
+
+    // First-Run Language Onboarding
+    const onboardingModal = document.getElementById("onboardingLangModal");
+    const savedLang = localStorage.getItem("ws_lang");
+    if (!savedLang && onboardingModal) {
+        onboardingModal.style.display = "flex";
+        onboardingModal.querySelectorAll(".lang-choice-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                applyLanguage(btn.dataset.lang || "en");
+                onboardingModal.style.display = "none";
+            });
+        });
+    } else {
+        applyLanguage(savedLang || "en");
     }
 });

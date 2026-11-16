@@ -83,7 +83,7 @@
                             <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
                         </div>
 
-                        <div class="form-group" id="amneziaGroup" style="margin-bottom: 0;">
+                        <div class="form-group collapsible-field" id="amneziaGroup" style="margin-bottom: 0;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                                 <label for="amneziaConfig" style="margin-bottom: 0;">Amnezia Config</label>
                                 <button id="btnRefreshAmnezia" type="button" class="icon-btn sync-btn" title="Refresh Amnezia Configs">
@@ -212,7 +212,7 @@
                         </label>
                         <button type="button" id="stabilizeUnitBtn" class="unit-badge-btn" title="Toggle KB / MB">KB</button>
                     </div>
-                    <div id="stabilizeControlsRow" style="display:flex; gap:10px; margin-top:8px;">
+                    <div id="stabilizeControlsRow" class="collapsible-field" style="display:flex; gap:10px; margin-top:8px;">
                         <div style="flex:1;">
                             <span class="sub-label">Target (<span id="stabilizeUnitLabel">KB</span>)</span>
                             <div class="stepper-box">
@@ -283,7 +283,7 @@
         <div class="main-content">
             <div class="dashboard-header">
                 <div class="status-summary">
-                    <span class="dashboard-title">Live Metrics</span>
+                    <span class="dashboard-title" data-i18n="liveMetrics">Live Metrics</span>
                 </div>
                 <div class="header-actions">
                     <button class="btn excel-btn" id="btnExportExcel" disabled title="Automatically generated after test finishes">
@@ -291,15 +291,16 @@
                             <rect x="3" y="3" width="18" height="18" rx="3" fill="#107C41" stroke="#238636" stroke-width="1.5"/>
                             <path d="M8 7.5L11.5 12L8 16.5H10.5L12.5 13.8L14.5 16.5H17L13.5 12L17 7.5H14.5L12.5 10.2L10.5 7.5H8Z" fill="#FFFFFF"/>
                         </svg>
-                        <span>Open Excel (.xlsx)</span>
+                        <span data-i18n="openExcel">Open Excel (.xlsx)</span>
                     </button>
+                    <button class="small-btn" id="btnOpenSettings" type="button" title="Settings & Language" style="padding: 7px 10px; font-size: 0.9rem;">⚙️</button>
                 </div>
             </div>
 
             <div class="dashboard-grid">
                 <div class="card stat-card ping">
                     <div class="card-header-row">
-                        <span class="card-title">PING / JITTER</span>
+                        <span class="card-title" data-i18n="pingJitter">PING / JITTER</span>
                         <div class="card-icon-badge ping-badge">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
@@ -312,7 +313,7 @@
                 </div>
                 <div class="card stat-card down">
                     <div class="card-header-row">
-                        <span class="card-title">DOWNLOAD</span>
+                        <span class="card-title" data-i18n="download">DOWNLOAD</span>
                         <div class="card-icon-badge down-badge">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -327,7 +328,7 @@
                 </div>
                 <div class="card stat-card up">
                     <div class="card-header-row">
-                        <span class="card-title">UPLOAD</span>
+                        <span class="card-title" data-i18n="upload">UPLOAD</span>
                         <div class="card-icon-badge up-badge">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -342,7 +343,7 @@
                 </div>
                 <div class="card stat-card info">
                     <div class="card-header-row">
-                        <span class="card-title">STATUS</span>
+                        <span class="card-title" data-i18n="status">STATUS</span>
                         <div class="card-icon-badge info-badge">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="2"/>
@@ -359,10 +360,10 @@
             <div class="card log-card">
                 <div class="log-header">
                     <div class="log-tabs">
-                        <button class="tab-btn active" id="tabLiveConsole" type="button">🖥️ Live Console</button>
-                        <button class="tab-btn" id="tabLiveTable" type="button">⚡ Verified Nodes (<span id="connectedBadge" class="connected-badge">0</span>)</button>
+                        <button class="tab-btn active" id="tabLiveConsole" type="button" data-i18n="liveConsole">🖥️ Live Console</button>
+                        <button class="tab-btn" id="tabLiveTable" type="button"><span data-i18n="verifiedNodes">⚡ Verified Nodes</span> (<span id="connectedBadge" class="connected-badge">0</span>)</button>
                     </div>
-                    <button class="small-btn" id="btnClearLogs" type="button">Clear</button>
+                    <button class="small-btn" id="btnClearLogs" type="button" data-i18n="clear">Clear</button>
                 </div>
                 <div class="log-container tab-content" id="logConsole"></div>
                 <div class="tab-content" id="liveTableTab" style="display: none;">
@@ -381,7 +382,7 @@
                             </thead>
                             <tbody id="realtimeTableBody"></tbody>
                         </table>
-                        <div class="table-empty-state" id="tableEmptyState">No successful connections recorded in this session yet.</div>
+                        <div class="table-empty-state" id="tableEmptyState" data-i18n="emptyTable">No successful connections recorded in this session yet.</div>
                     </div>
                 </div>
             </div>
@@ -419,6 +420,61 @@
             <div id="errorModalMessage" class="dark-modal-body"></div>
             <div class="dark-modal-footer">
                 <button type="button" id="errorModalOk" class="btn primary" style="padding: 7px 20px;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Test Matrix Counter -->
+    <div id="floatingMatrixPill" class="floating-matrix-pill" title="Live Test Matrix & Estimated Time">
+        <span id="floatingMatrixText">🎯 0 Locs • 0 Protos • 0 Ports ➔ 0 Tests | ⏱️ Est: ~0m</span>
+    </div>
+
+    <!-- Settings & Custom CLI Path Modal -->
+    <div id="settingsModal" class="dark-modal-backdrop" style="display:none;">
+        <div class="dark-modal" style="width: 440px;">
+            <div class="dark-modal-header" style="background: rgba(56, 139, 253, 0.08);">
+                <span class="dark-modal-icon">⚙️</span>
+                <span class="dark-modal-title" data-i18n="settingsTitle">Settings</span>
+                <button type="button" id="settingsModalClose" class="toast-close" title="Close">✕</button>
+            </div>
+            <div class="dark-modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="settingsLangSelect" data-i18n="language">Language</label>
+                    <select id="settingsLangSelect" class="modern-select">
+                        <option value="en">🇬🇧 English</option>
+                        <option value="fa">🇮🇷 پارسی (Persian RTL)</option>
+                        <option value="ru">🇷🇺 Русский</option>
+                        <option value="zh">🇨🇳 简体中文</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="settingsCliPath" data-i18n="customCliPath">Custom windscribe-cli Path</label>
+                    <input type="text" id="settingsCliPath" class="modern-input" placeholder="e.g. D:\Windscribe\windscribe-cli.exe">
+                    <div style="font-size:11px; color:#8b949e; margin-top:5px;" data-i18n="cliPathHint">Leave empty to use default system path.</div>
+                </div>
+            </div>
+            <div class="dark-modal-footer" style="gap:8px;">
+                <button type="button" id="settingsResetBtn" class="small-btn" style="padding:7px 14px;" data-i18n="resetDefault">Reset Default</button>
+                <button type="button" id="settingsSaveBtn" class="btn primary" style="padding:7px 20px;" data-i18n="saveSettings">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-Run Language Onboarding Modal -->
+    <div id="onboardingLangModal" class="dark-modal-backdrop" style="display:none;">
+        <div class="dark-modal" style="width: 420px;">
+            <div class="dark-modal-header" style="background: rgba(56, 139, 253, 0.1);">
+                <span class="dark-modal-icon">🌍</span>
+                <span class="dark-modal-title" data-i18n="welcomeTitle">Choose Your Language</span>
+            </div>
+            <div class="dark-modal-body">
+                <p style="margin:0 0 12px 0; color:#8b949e; font-size:0.82rem;" data-i18n="welcomeSubtitle">Select your preferred interface language. You can change this anytime in Settings.</p>
+                <div class="lang-grid">
+                    <button type="button" class="lang-choice-btn" data-lang="en">🇬🇧 English</button>
+                    <button type="button" class="lang-choice-btn" data-lang="fa">🇮🇷 پارسی</button>
+                    <button type="button" class="lang-choice-btn" data-lang="ru">🇷🇺 Русский</button>
+                    <button type="button" class="lang-choice-btn" data-lang="zh">🇨🇳 简体中文</button>
+                </div>
             </div>
         </div>
     </div>
