@@ -1403,3 +1403,30 @@ input[type="number"] {
     border-color: #58a6ff;
     transform: translateY(-1px);
 }
+
+/* Natural bidi for Persian text inside LTR layout (prevents English words jumping backwards) */
+[lang="fa"] [data-i18n],
+[lang="fa"] label,
+[lang="fa"] .hint-text,
+[lang="fa"] .sub-label {
+    unicode-bidi: plaintext;
+}
+
+/* Crisp ISO Country Badge (renders cleanly on Windows without missing flag emoji font) */
+.country-code-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    padding: 1px 5px;
+    margin-right: 5px;
+    border-radius: 4px;
+    background: rgba(56, 139, 253, 0.14);
+    border: 1px solid rgba(56, 139, 253, 0.3);
+    color: #79c0ff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    line-height: 1.3;
+    vertical-align: middle;
+}

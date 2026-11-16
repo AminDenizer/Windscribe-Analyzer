@@ -29,7 +29,7 @@
                         <option value="Russia">Russia</option>
                         <option value="China">China</option>
                         <option value="Other / Global">Other / Global</option>
-                        <option value="__custom__">+ Add Custom Country...</option>
+                        <option value="__custom__" data-i18n="addCustomCountryOpt">+ Add Custom Country...</option>
                     </select>
                     <div id="customCountryBox" class="custom-inline-input" style="display: none;">
                         <input type="text" id="customCountryInput" class="modern-input" placeholder="Type country name..." />
@@ -76,9 +76,9 @@
                         <div class="form-group" style="margin-bottom: 0;">
                             <label for="protocolTweaksMode" style="margin-bottom: 6px; display: block;" data-i18n="protocolTweaks">Protocol Tweaks</label>
                             <select id="protocolTweaksMode" class="modern-select">
-                                <option value="Enabled" selected>Enabled</option>
-                                <option value="Auto">Auto</option>
-                                <option value="Disabled">Disabled</option>
+                                <option value="Enabled" selected data-i18n="optEnabled">Enabled</option>
+                                <option value="Auto" data-i18n="optAuto">Auto</option>
+                                <option value="Disabled" data-i18n="optDisabled">Disabled</option>
                             </select>
                             <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;" data-i18n="protocolTweaksDesc">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
                         </div>
@@ -110,9 +110,9 @@
                         <div class="form-group" style="margin-bottom: 0;">
                             <label style="margin-bottom: 6px; display: block;" data-i18n="serverRouting">Server Routing</label>
                             <select id="serverRouting" class="modern-select">
-                                <option value="Auto">Auto</option>
-                                <option value="Regular" selected>Regular</option>
-                                <option value="Alternate">Alternate</option>
+                                <option value="Auto" data-i18n="optAuto">Auto</option>
+                                <option value="Regular" selected data-i18n="optRegular">Regular</option>
+                                <option value="Alternate" data-i18n="optAlternate">Alternate</option>
                             </select>
                         </div>
 
@@ -126,8 +126,8 @@
 
                         <div class="form-group" id="sniContainer" style="margin-bottom: 0;">
                             <label style="margin-bottom: 6px; display: block;" data-i18n="customSni">Custom SNI Domain</label>
-                            <input type="text" id="customSni" class="modern-input" placeholder="example.com (optional)">
-                            <small class="hint-text" style="display: block; margin-top: 6px;">Applies to Stealth and Wstunnel protocols only.</small>
+                            <input type="text" id="customSni" class="modern-input" placeholder="example.com (optional)" data-i18n-placeholder="sniPlaceholder">
+                            <small class="hint-text" style="display: block; margin-top: 6px;" data-i18n="sniHint">Applies to Stealth and Wstunnel protocols only.</small>
                         </div>
 
                         <div class="form-group" style="margin-bottom: 0;">
@@ -144,11 +144,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Selection Mode</label>
+                    <label data-i18n="selectionModeLabel">Selection Mode</label>
                     <select id="selectionMode" class="modern-select">
-                        <option value="manual">Manual Select</option>
-                        <option value="smart">Smart (Data-Driven)</option>
-                        <option value="discovery">Discovery (5 Random)</option>
+                        <option value="manual" data-i18n="modeManual">Manual Select</option>
+                        <option value="smart" data-i18n="modeSmart">Smart (Data-Driven)</option>
+                        <option value="discovery" data-i18n="modeDiscovery">Discovery (5 Random)</option>
                     </select>
                 </div>
                 
@@ -165,7 +165,7 @@
                             </button>
                         </div>
                     </div>
-                    <input type="text" id="locSearch" class="modern-input search-box" placeholder="Search country, city, server...">
+                    <input type="text" id="locSearch" class="modern-input search-box" placeholder="Search country, city, server..." data-i18n-placeholder="locSearchPlaceholder">
                     <div class="scroll-list" id="locationTree">
                         <div style="padding:10px; color:#888;">Loading locations...</div>
                     </div>
@@ -234,9 +234,9 @@
                 <div class="form-group">
                     <label for="speedEngine" data-i18n="speedEngineLabel">Speedtest Engine</label>
                     <select id="speedEngine" class="modern-select">
-                        <option value="ookla" selected>Ookla Speedtest (Default)</option>
-                        <option value="cloudflare">Cloudflare Speedtest (CDN)</option>
-                        <option value="both">Both (Ookla + Cloudflare)</option>
+                        <option value="ookla" selected data-i18n="engineOokla">Ookla Speedtest (Default)</option>
+                        <option value="cloudflare" data-i18n="engineCloudflare">Cloudflare Speedtest (CDN)</option>
+                        <option value="both" data-i18n="engineBoth">Both (Ookla + Cloudflare)</option>
                     </select>
                 </div>
                 <div class="form-group stabilize-card">
@@ -376,13 +376,13 @@
                         <table class="realtime-table" id="realtimeTable">
                             <thead>
                                 <tr>
-                                    <th>Location</th>
-                                    <th>Protocol</th>
-                                    <th>Preset</th>
-                                    <th>Ping</th>
-                                    <th>Download</th>
-                                    <th>Upload</th>
-                                    <th>Time</th>
+                                    <th data-i18n="thLocation">Location</th>
+                                    <th data-i18n="thProtocol">Protocol</th>
+                                    <th data-i18n="thPreset">Preset</th>
+                                    <th data-i18n="thPing">Ping</th>
+                                    <th data-i18n="thDownload">Download</th>
+                                    <th data-i18n="thUpload">Upload</th>
+                                    <th data-i18n="thTime">Time</th>
                                 </tr>
                             </thead>
                             <tbody id="realtimeTableBody"></tbody>

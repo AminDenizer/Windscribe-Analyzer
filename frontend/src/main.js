@@ -409,8 +409,10 @@ function appendConnectedRow(item) {
     const timeVal = item.timestamp ? (item.timestamp.split(" ")[1] || item.timestamp) : new Date().toLocaleTimeString();
     const presetVal = item.antiCensorshipMode && item.antiCensorshipMode !== "-" && item.antiCensorshipMode !== "None" ? item.antiCensorshipMode : "-";
 
+    const cc = countryCodeToFlag(item.countryCode);
+    const badgeHtml = cc ? `<span class="country-code-badge">${escapeHtml(cc)}</span>` : "";
     row.innerHTML = `
-        <td class="cell-loc"><span>${countryCodeToFlag(item.countryCode)} ${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || item.location || "")}</span></td>
+        <td class="cell-loc">${badgeHtml}<span>${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || item.location || "")}</span></td>
         <td class="cell-proto">${escapeHtml(item.protocol)}:${item.port}</td>
         <td class="cell-preset" style="color:#79c0ff; font-size:0.75rem;">${escapeHtml(presetVal)}</td>
         <td class="cell-ping">${pingVal}</td>
@@ -654,8 +656,15 @@ async function fetchLocations(forceOnline = false) {
                 
                 countryHeader.appendChild(cIcon);
                 countryHeader.appendChild(cCb);
-                const cFlag = countryCodeToFlag(locations[0]?.countryCode);
-                countryHeader.appendChild(document.createTextNode(` ${cFlag} ${country}`));
+                const cCode = countryCodeToFlag(locations[0]?.countryCode);
+                if (cCode) {
+                    const cBadge = document.createElement('span');
+                    cBadge.className = 'country-code-badge';
+                    cBadge.textContent = cCode;
+                    countryHeader.appendChild(document.createTextNode(' '));
+                    countryHeader.appendChild(cBadge);
+                }
+                countryHeader.appendChild(document.createTextNode(` ${country}`));
                 
                 const locsDiv = document.createElement('div');
                 locsDiv.className = 'tree-locations';
@@ -1348,6 +1357,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.querySelectorAll("[data-i18n]").forEach(el => {
             const key = el.getAttribute("data-i18n");
             if (dict[key]) el.textContent = dict[key];
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+            const key = el.getAttribute("data-i18n-placeholder");
+            if (dict[key]) el.setAttribute("placeholder", dict[key]);
         });
 
         const btnStartEl = document.getElementById("btnStart");
