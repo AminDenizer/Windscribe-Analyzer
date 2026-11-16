@@ -972,7 +972,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 });
             });
             if (!isResume && selectedLocations.length === 0) {
-                alert("Please select at least one location!");
+                showErrorModal("No Locations Selected", "Please select at least one location before starting the test.");
                 return null;
             }
         }
@@ -987,6 +987,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.querySelectorAll(`.cb-port-${proto}:checked`).forEach(pCb => ports.push(parseInt(pCb.value)));
             if (ports.length > 0) protocolPorts[proto] = ports;
         });
+
+        if (!isResume && Object.keys(protocolPorts).length === 0) {
+            showErrorModal("No Protocols Selected", "Please select at least one protocol & port combination.");
+            return null;
+        }
 
         const countryElem = document.getElementById("networkCountry");
         const ispElem = document.getElementById("networkIsp");
@@ -1023,7 +1028,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             stabilizeEnabled: document.getElementById("stabilizeEnabled") ? document.getElementById("stabilizeEnabled").checked : true,
             stabilizeMinBytes: parseInt(document.getElementById("stabilizeMinBytes")?.value) || 500,
             stabilizeUnit: document.getElementById("stabilizeUnitBtn")?.dataset.unit || "KB",
-            stabilizeTimeout: parseInt(document.getElementById("stabilizeTimeout")?.value) || 60
+            stabilizeTimeout: parseInt(document.getElementById("stabilizeTimeout")?.value) || 60,
+            speedEngine: document.getElementById("speedEngine")?.value || "ookla",
+            shuffleLocations: document.getElementById("shuffleLocations")?.checked || false,
+            shuffleProtocols: document.getElementById("shuffleProtocols")?.checked || false,
+            connectAndHold: document.getElementById("connectAndHold")?.checked || false
         };
     }
 
@@ -1073,7 +1082,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             btnStart.disabled = false;
             btnStop.disabled = true;
             btnStop.innerText = "STOP SESSION";
-        } else if (update.status === "Done") {
+        } else if (update.status === "Done" || update.status === "Connected & Held") {
             if (btnContinue) btnContinue.style.display = "none";
             btnStart.innerText = "START ANALYZING";
             btnStart.disabled = false;
@@ -1227,4 +1236,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         stabilizeEnabled.addEventListener("change", syncStabilizeDisabledState);
         syncStabilizeDisabledState();
     }
+
+    // Custom Dark Error Modal
+    const errorModal = document.getElementById("errorModal");
+    const errorModalTitle = document.getElementById("errorModalTitle");
+    const errorModalMessage = document.getElementById("errorModalMessage");
+    const errorModalOk = document.getElementById("errorModalOk");
+    const errorModalClose = document.getElementById("errorModalClose");
+
+    function showErrorModal(title, message) {
+        if (!errorModal) return;
+        if (errorModalTitle) errorModalTitle.textContent = title || "Attention";
+        if (errorModalMessage) errorModalMessage.textContent = message || "";
+        errorModal.style.display = "flex";
+    }
+
+    function hideErrorModal() {
+        if (errorModal) errorModal.style.display = "none";
+    }
+
+    if (errorModalOk) errorModalOk.addEventListener("click", hideErrorModal);
+    if (errorModalClose) errorModalClose.addEventListener("click", hideErrorModal);
+    if (errorModal) {
+        errorModal.addEventListener("click", (e) => {
+            if (e.target === errorModal) hideErrorModal();
+        });
+    }
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && errorModal && errorModal.style.display === "flex") {
+            hideErrorModal();
+        }
+    });
 });

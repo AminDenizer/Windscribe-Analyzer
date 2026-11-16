@@ -55,6 +55,10 @@ type TestConfig struct {
 	StabilizeMinBytes  int              `json:"stabilizeMinBytes"`
 	StabilizeUnit      string           `json:"stabilizeUnit"` // "KB" or "MB"
 	StabilizeTimeout   int              `json:"stabilizeTimeout"`
+	SpeedEngine        string           `json:"speedEngine"`      // "ookla", "cloudflare", "both"
+	ShuffleLocations   bool             `json:"shuffleLocations"`
+	ShuffleProtocols   bool             `json:"shuffleProtocols"`
+	ConnectAndHold     bool             `json:"connectAndHold"`
 }
 
 type EventUpdate struct {
@@ -139,57 +143,89 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			ispName = "Default / Direct"
 		}
 
-		// Build the queue matrix
-		for _, loc := range locationsToTest {
-			for protocol, portsToTest := range config.ProtocolPorts {
-				if len(portsToTest) == 0 {
-					continue
+		// Build protocol-port pairs
+		type protoPort struct {
+			protocol string
+			port     int
+		}
+		var protoPairs []protoPort
+		for protocol, portsToTest := range config.ProtocolPorts {
+			for _, port := range portsToTest {
+				protoPairs = append(protoPairs, protoPort{protocol: protocol, port: port})
+			}
+		}
+
+		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+		if config.ShuffleLocations && len(locationsToTest) > 1 {
+			shuffledLocs := make([]LocationData, len(locationsToTest))
+			copy(shuffledLocs, locationsToTest)
+			rng.Shuffle(len(shuffledLocs), func(i, j int) { shuffledLocs[i], shuffledLocs[j] = shuffledLocs[j], shuffledLocs[i] })
+			locationsToTest = shuffledLocs
+		}
+		if config.ShuffleProtocols && len(protoPairs) > 1 {
+			rng.Shuffle(len(protoPairs), func(i, j int) { protoPairs[i], protoPairs[j] = protoPairs[j], protoPairs[i] })
+		}
+
+		appendTask := func(loc LocationData, protocol string, port int) {
+			p := strings.ToLower(protocol)
+			isTweaksSupported := (p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth")
+			taskTweaks := config.ProtocolTweaks && isTweaksSupported
+
+			taskAmnezia := "-"
+			if isTweaksSupported && config.ProtocolTweaks {
+				if config.AmneziaConfig != "" && config.AmneziaConfig != "None (Disabled)" && config.AmneziaConfig != "Disabled" && config.AmneziaConfig != "None" {
+					taskAmnezia = config.AmneziaConfig
+				} else {
+					taskAmnezia = "None"
 				}
-				for _, port := range portsToTest {
-					p := strings.ToLower(protocol)
-					isTweaksSupported := (p == "wireguard" || p == "udp" || p == "tcp" || p == "stealth")
+			}
 
-					taskTweaks := config.ProtocolTweaks && isTweaksSupported
+			sni := config.CustomSNI
+			if p != "stealth" && p != "wstunnel" {
+				sni = "-"
+			} else if sni == "" {
+				sni = "-"
+			}
 
-					taskAmnezia := "-"
-					if isTweaksSupported && config.ProtocolTweaks {
-						if config.AmneziaConfig != "" && config.AmneziaConfig != "None (Disabled)" && config.AmneziaConfig != "Disabled" && config.AmneziaConfig != "None" {
-							taskAmnezia = config.AmneziaConfig
-						} else {
-							taskAmnezia = "None"
-						}
-					}
+			serverRouting := config.ServerRouting
+			if serverRouting == "" {
+				serverRouting = "Auto"
+			}
 
-					sni := config.CustomSNI
-					if p != "stealth" && p != "wstunnel" {
-						sni = "-"
-					} else if sni == "" {
-						sni = "-"
-					}
+			queue = append(queue, TestResult{
+				Timestamp:          time.Now().Format("2006-01-02 15:04:05"),
+				Location:           loc.Location,
+				City:               loc.City,
+				Country:            loc.Region,
+				CountryCode:        loc.CountryCode,
+				Continent:          loc.Continent,
+				Protocol:           protocol,
+				Port:               port,
+				ProtocolTweaks:     taskTweaks,
+				AntiCensorshipMode: taskAmnezia,
+				ServerRouting:      serverRouting,
+				CustomSNI:          sni,
+				LargeTLS:           config.LargeTLS && (p == "stealth" || p == "wstunnel"),
+				InternalDNS:        config.InternalDNS,
+				ISP:                ispName,
+			})
+		}
 
-					serverRouting := config.ServerRouting
-					if serverRouting == "" {
-						serverRouting = "Auto"
-					}
-
-					queue = append(queue, TestResult{
-						Timestamp:          time.Now().Format("2006-01-02 15:04:05"),
-						Location:           loc.Location,
-						City:               loc.City,
-						Country:            loc.Region,
-						CountryCode:        loc.CountryCode,
-						Continent:          loc.Continent,
-						Protocol:           protocol,
-						Port:               port,
-						ProtocolTweaks:     taskTweaks,
-						AntiCensorshipMode: taskAmnezia,
-						ServerRouting:      serverRouting,
-						CustomSNI:          sni,
-						LargeTLS:           config.LargeTLS && (p == "stealth" || p == "wstunnel"),
-						InternalDNS:        config.InternalDNS,
-						ISP:                ispName,
-					})
+		// Build the queue matrix (interleave by protocol when ShuffleLocations is enabled to avoid hammering one IP)
+		if config.ShuffleLocations && !config.ShuffleProtocols {
+			for _, pp := range protoPairs {
+				for _, loc := range locationsToTest {
+					appendTask(loc, pp.protocol, pp.port)
 				}
+			}
+		} else {
+			for _, loc := range locationsToTest {
+				for _, pp := range protoPairs {
+					appendTask(loc, pp.protocol, pp.port)
+				}
+			}
+			if config.ShuffleLocations && config.ShuffleProtocols && len(queue) > 1 {
+				rng.Shuffle(len(queue), func(i, j int) { queue[i], queue[j] = queue[j], queue[i] })
 			}
 		}
 
@@ -591,78 +627,113 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			case <-time.After(sleepDuration):
 			}
 
-			// Step 2: Progressive Speedtest Measurement
-			var speedtestClient = speedtest.New()
-			serverList, err := speedtestClient.FetchServers()
+			// Step 2: Progressive Speedtest Measurement (Ookla / Cloudflare / Both)
+			engine := strings.ToLower(strings.TrimSpace(config.SpeedEngine))
+			if engine == "" {
+				engine = "ookla"
+			}
 
-			if err == nil && len(serverList) > 0 {
+			runOokla := func() bool {
+				speedtestClient := speedtest.New()
+				serverList, err := speedtestClient.FetchServers()
+				if err != nil || len(serverList) == 0 {
+					return false
+				}
 				targets, err := serverList.FindServer([]int{})
 				if err != nil || len(targets) == 0 {
 					targets = serverList
 				}
 				s := targets[0]
 
-				// Measure Ping & Jitter
 				if config.TestPing {
 					sendUpdate(EventUpdate{
-						Message: fmt.Sprintf("Testing Latency & Jitter on %s...", s.Name),
+						Message: fmt.Sprintf("Testing Ookla Latency & Jitter on %s...", s.Name),
 						Status:  "Testing Latency...",
 					})
-
 					s.PingTest(nil)
 					task.Ping = float64(s.Latency.Milliseconds())
 					task.Jitter = float64(s.Jitter.Milliseconds())
-
-					// Immediately update Ping card
 					sendUpdate(EventUpdate{
 						Ping:    fmt.Sprintf("%.0f ms (Jitter: %.0f ms)", task.Ping, task.Jitter),
-						Message: fmt.Sprintf("Ping: %.0f ms, Jitter: %.0f ms", task.Ping, task.Jitter),
+						Message: fmt.Sprintf("Ookla Ping: %.0f ms, Jitter: %.0f ms", task.Ping, task.Jitter),
 						Status:  "Testing Download...",
 					})
 				}
-
-				// Measure Download
 				if config.TestDownload {
 					sendUpdate(EventUpdate{
-						Message: "Testing Download speed...",
+						Message: "Testing Ookla Download speed...",
 						Status:  "Testing Download...",
 					})
-
 					s.DownloadTest()
-					task.Download = float64(s.DLSpeed) / 125000 // Convert bytes/s to Mbps
+					task.Download = float64(s.DLSpeed) / 125000
 					if task.Download < 0 {
 						task.Download = 0
 					}
-
-					// Immediately update Download card
 					sendUpdate(EventUpdate{
 						Down:    fmt.Sprintf("%.2f Mbps", task.Download),
-						Message: fmt.Sprintf("Download Speed: %.2f Mbps", task.Download),
+						Message: fmt.Sprintf("Ookla Download Speed: %.2f Mbps", task.Download),
 						Status:  "Testing Upload...",
 					})
 				}
-
-				// Measure Upload
 				if config.TestUpload {
 					sendUpdate(EventUpdate{
-						Message: "Testing Upload speed...",
+						Message: "Testing Ookla Upload speed...",
 						Status:  "Testing Upload...",
 					})
-
 					s.UploadTest()
-					task.Upload = float64(s.ULSpeed) / 125000 // Convert bytes/s to Mbps
+					task.Upload = float64(s.ULSpeed) / 125000
 					if task.Upload < 0 {
 						task.Upload = 0
 					}
-
-					// Immediately update Upload card
 					sendUpdate(EventUpdate{
 						Up:      fmt.Sprintf("%.2f Mbps", task.Upload),
-						Message: fmt.Sprintf("Upload Speed: %.2f Mbps", task.Upload),
+						Message: fmt.Sprintf("Ookla Upload Speed: %.2f Mbps", task.Upload),
 						Status:  "Saved",
 					})
 				}
+				return true
+			}
 
+			runCloudflare := func() bool {
+				sendUpdate(EventUpdate{
+					Message: "Testing Cloudflare Speedtest (speed.cloudflare.com)...",
+					Status:  "Testing Cloudflare...",
+				})
+				cfPing, cfJitter, cfDown, cfUp, cfErr := runCloudflareSpeedtest(ctx, config.TestPing, config.TestDownload, config.TestUpload)
+				if cfErr != nil {
+					sendUpdate(EventUpdate{
+						Message: fmt.Sprintf("Cloudflare speedtest failed: %v", cfErr),
+						Status:  "Cloudflare N/A",
+					})
+					return false
+				}
+				task.Ping = cfPing
+				task.Jitter = cfJitter
+				task.Download = cfDown
+				task.Upload = cfUp
+				sendUpdate(EventUpdate{
+					Ping:    fmt.Sprintf("%.0f ms (Jitter: %.0f ms)", task.Ping, task.Jitter),
+					Down:    fmt.Sprintf("%.2f Mbps", task.Download),
+					Up:      fmt.Sprintf("%.2f Mbps", task.Upload),
+					Message: fmt.Sprintf("Cloudflare: Ping=%.0fms (Jitter=%.0fms) | Down=%.2fMbps | Up=%.2fMbps", task.Ping, task.Jitter, task.Download, task.Upload),
+					Status:  "Saved",
+				})
+				return true
+			}
+
+			ooklaOK := false
+			cfOK := false
+			switch engine {
+			case "cloudflare":
+				cfOK = runCloudflare()
+			case "both":
+				ooklaOK = runOokla()
+				cfOK = runCloudflare()
+			default:
+				ooklaOK = runOokla()
+			}
+
+			if ooklaOK || cfOK {
 				sendUpdate(EventUpdate{
 					Message: fmt.Sprintf("Results for %s (%s:%d): Ping=%.0fms | Down=%.2fMbps | Up=%.2fMbps",
 						targetLoc, task.Protocol, task.Port, task.Ping, task.Download, task.Upload),
@@ -682,6 +753,33 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		o.mu.Lock()
 		o.completedResults = completedResults
 		o.mu.Unlock()
+
+		// Connect & Hold: stop testing and keep the first working tunnel active
+		if config.ConnectAndHold {
+			o.mu.Lock()
+			o.remainingQueue = queue[i+1:]
+			remCount := len(o.remainingQueue)
+			o.mu.Unlock()
+
+			var excelPath string
+			if len(completedResults) > 0 {
+				timestamp := time.Now().Format("2006-01-02_15-04-05")
+				outName := getCachePath(fmt.Sprintf("Windscribe_Results_%s.xlsx", timestamp))
+				if path, err := GenerateExcelReport(completedResults, outName); err == nil {
+					excelPath = path
+				}
+			}
+
+			sendUpdate(EventUpdate{
+				Message:     fmt.Sprintf("🎯 Connect & Hold: Connected to %s (%s:%d). VPN tunnel kept alive (%d remaining in queue).", targetLoc, task.Protocol, task.Port, remCount),
+				Status:      "Connected & Held",
+				CanResume:   remCount > 0,
+				TestedCount: len(completedResults),
+				TotalCount:  o.totalTasks,
+				ExcelPath:   excelPath,
+			})
+			return
+		}
 
 		discCtxDone, discCancelDone := context.WithTimeout(ctx, 8*time.Second)
 		_ = o.worker.EnsureDisconnected(discCtxDone)
