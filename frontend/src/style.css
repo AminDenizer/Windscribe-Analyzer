@@ -191,25 +191,31 @@ body {
 
 /* Modern Inputs & Selects */
 .modern-input, .modern-select {
+    box-sizing: border-box;
     background: var(--bg-input);
     border: 1px solid var(--border);
     color: var(--text-main);
-    padding: 7px 10px;
+    padding: 7px 11px;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     outline: none;
     transition: all 0.2s;
     width: 100%;
+    direction: ltr;
+    text-align: left;
 }
 
 .modern-select {
     appearance: none;
     -webkit-appearance: none;
-    padding-right: 32px;
+    padding: 7px 34px 7px 11px;
     background-color: var(--bg-input);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 10px center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
     cursor: pointer;
 }
 
@@ -1409,12 +1415,31 @@ input[type="number"] {
     transform: translateY(-1px);
 }
 
-/* Natural bidi for Persian text inside LTR layout (prevents English words jumping backwards) */
+/* Natural bidi & clean alignment for Persian text inside LTR layout */
 [lang="fa"] [data-i18n],
 [lang="fa"] label,
 [lang="fa"] .hint-text,
 [lang="fa"] .sub-label {
     unicode-bidi: plaintext;
+}
+
+[lang="fa"] #firewallTipBox,
+[lang="fa"] #manualModeBanner,
+[lang="fa"] #protocolTweaksDesc,
+[lang="fa"] #sniHint,
+[lang="fa"] [data-i18n="amneziaDesc"] {
+    direction: rtl;
+    text-align: right;
+    unicode-bidi: embed;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+
+[lang="fa"] select.modern-select,
+[lang="fa"] select.modern-select option {
+    direction: ltr;
+    text-align: left;
+    unicode-bidi: embed;
 }
 
 /* Crisp ISO Country Badge (renders cleanly on Windows without missing flag emoji font) */
