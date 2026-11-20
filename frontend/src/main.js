@@ -390,6 +390,137 @@ function escapeHtml(str) {
 }
 
 let verifiedNodesList = [];
+let countdownTimer = null;
+let remainingEtaSec = 0;
+let isTestRunning = false;
+
+function getPerTestSeconds() {
+    const speedWait = parseInt(document.getElementById("speedWait")?.value) || 5;
+    const engine = document.getElementById("speedEngine")?.value || "ookla";
+    return 10 + speedWait + (engine === "both" ? 22 : 12);
+}
+
+function formatCountdown(sec) {
+    const s = Math.max(0, Math.round(sec));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const remS = s % 60;
+    if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(remS).padStart(2, "0")}s`;
+    return `${String(m).padStart(2, "0")}:${String(remS).padStart(2, "0")}`;
+}
+
+function renderCountdownEta() {
+    const pillEta = document.getElementById("floatingMatrixEta");
+    if (!pillEta) return;
+    const lang = localStorage.getItem("ws_lang") || "en";
+    const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+    if (isTestRunning) {
+        pillEta.textContent = `${t.matrixEst}: ${formatCountdown(remainingEtaSec)}`;
+    } else {
+        const estMin = remainingEtaSec > 0 ? Math.max(1, Math.round(remainingEtaSec / 60)) : 0;
+        pillEta.textContent = `${t.matrixEst}: ~${estMin}m`;
+    }
+}
+
+function startCountdown(totalTests) {
+    isTestRunning = true;
+    remainingEtaSec = Math.max(1, totalTests) * getPerTestSeconds();
+    const dot = document.getElementById("pillLiveDot");
+    const gridIcon = document.getElementById("pillGridIcon");
+    if (dot) dot.style.display = "inline-block";
+    if (gridIcon) gridIcon.style.display = "none";
+    renderCountdownEta();
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+        if (remainingEtaSec > 0) remainingEtaSec--;
+        renderCountdownEta();
+    }, 1000);
+}
+
+function syncCountdown(tested, total) {
+    if (!isTestRunning) return;
+    const pillText = document.getElementById("floatingMatrixText");
+    if (pillText) {
+        const lang = localStorage.getItem("ws_lang") || "en";
+        const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+        pillText.textContent = `${tested} / ${total} ${t.matrixTests}`;
+    }
+    const rem = Math.max(0, total - tested);
+    remainingEtaSec = rem * getPerTestSeconds();
+    renderCountdownEta();
+}
+
+function stopCountdown() {
+    isTestRunning = false;
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+    const dot = document.getElementById("pillLiveDot");
+    const gridIcon = document.getElementById("pillGridIcon");
+    if (dot) dot.style.display = "none";
+    if (gridIcon) gridIcon.style.display = "inline-block";
+    updateFloatingMatrix();
+}
+
+function updateFloatingMatrix() {
+    if (isTestRunning) return;
+    const pillText = document.getElementById("floatingMatrixText");
+    if (!pillText) return;
+    const lang = localStorage.getItem("ws_lang") || "en";
+    const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+
+    const locsCount = document.querySelectorAll(".cb-location:checked").length;
+    const activeProtos = Object.keys(VALID_PROTOCOLS).filter(proto =>
+        document.querySelectorAll(`.cb-port-${proto}:checked`).length > 0
+    ).length;
+    const portsCount = document.querySelectorAll('[class*="cb-port-"]:checked').length;
+    const totalTests = locsCount * portsCount;
+
+    remainingEtaSec = totalTests * getPerTestSeconds();
+    pillText.textContent = `${t.matrixPrefix}: ${locsCount} ${t.matrixLocs} • ${activeProtos} ${t.matrixProtos} • ${portsCount} ${t.matrixPorts} → ${totalTests} ${t.matrixTests}`;
+    renderCountdownEta();
+}
+
+function updateProtocolDependentGuards() {
+    const lang = localStorage.getItem("ws_lang") || "en";
+    const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+    const hasChecked = (proto) => document.querySelectorAll(`.cb-port-${proto}:checked`).length > 0;
+    const anyChecked = Object.keys(VALID_PROTOCOLS).some(hasChecked);
+    const hasSNIProto = !anyChecked || hasChecked("stealth") || hasChecked("wstunnel");
+    const hasTweakProto = !anyChecked || hasChecked("wireguard") || hasChecked("udp") || hasChecked("tcp") || hasChecked("stealth");
+
+    const sniContainer = document.getElementById("sniContainer");
+    const customSniInput = document.getElementById("customSni");
+    const sniHint = document.getElementById("sniHint");
+    if (sniContainer && customSniInput) {
+        sniContainer.classList.toggle("is-proto-disabled", !hasSNIProto);
+        customSniInput.disabled = !hasSNIProto;
+        if (sniHint) {
+            sniHint.textContent = hasSNIProto ? t.sniActiveNote : t.sniDisabledNote;
+        }
+    }
+
+    const tweaksGroup = document.getElementById("tweaksModeGroup");
+    const tweaksSelect = document.getElementById("protocolTweaksMode");
+    const tweaksDesc = document.getElementById("protocolTweaksDesc");
+    const amneziaSelect = document.getElementById("amneziaConfig");
+    const btnRefreshAmn = document.getElementById("btnRefreshAmnezia");
+    const amneziaGroup = document.getElementById("amneziaGroup");
+    if (tweaksGroup && tweaksSelect) {
+        tweaksGroup.classList.toggle("is-proto-disabled", !hasTweakProto);
+        tweaksSelect.disabled = !hasTweakProto;
+        if (!hasTweakProto) {
+            if (amneziaGroup) amneziaGroup.classList.add("is-collapsed");
+            if (amneziaSelect) amneziaSelect.disabled = true;
+            if (btnRefreshAmn) btnRefreshAmn.disabled = true;
+            if (tweaksDesc) tweaksDesc.textContent = t.tweaksDisabledNote;
+        } else {
+            if (tweaksDesc) tweaksDesc.textContent = t.tweaksActiveNote;
+            updateTweaksState();
+        }
+    }
+}
 
 function appendConnectedRow(item) {
     const tableBody = document.getElementById("realtimeTableBody");
@@ -971,12 +1102,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.querySelectorAll(".cb-location").forEach(cb => cb.checked = true);
         document.querySelectorAll(".cb-country").forEach(cb => cb.checked = true);
         document.querySelectorAll(".cb-continent").forEach(cb => cb.checked = true);
+        updateFloatingMatrix();
     });
     
     document.getElementById("btnClearLocs").addEventListener("click", () => {
         document.querySelectorAll(".cb-location").forEach(cb => cb.checked = false);
         document.querySelectorAll(".cb-country").forEach(cb => { cb.checked = false; cb.indeterminate = false; });
         document.querySelectorAll(".cb-continent").forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+        updateFloatingMatrix();
     });
 
     const selMode = document.getElementById("selectionMode");
@@ -1196,6 +1329,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             hideExcelToast();
 
             logMsg("Resuming Windscribe Analyzer with remaining locations...", "log-info");
+            const remCount = parseInt(document.getElementById("remainingCountTxt")?.innerText) || 1;
+            startCountdown(remCount);
             window.go.main.App.StartTest(config);
         });
     }
@@ -1249,6 +1384,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const max = input.hasAttribute("max") ? parseInt(input.getAttribute("max")) : 999;
             val = Math.max(min, Math.min(max, val + step));
             input.value = val;
+            updateFloatingMatrix();
         });
     });
 
@@ -1340,140 +1476,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         shuffleProtos.addEventListener("change", syncShuffleMaster);
     }
 
-    // Floating Test Matrix Counter & Animated Live Countdown
-    let countdownTimer = null;
-    let remainingEtaSec = 0;
-    let isTestRunning = false;
-
-    function getPerTestSeconds() {
-        const speedWait = parseInt(document.getElementById("speedWait")?.value) || 5;
-        const engine = document.getElementById("speedEngine")?.value || "ookla";
-        return 10 + speedWait + (engine === "both" ? 22 : 12);
-    }
-
-    function formatCountdown(sec) {
-        const s = Math.max(0, Math.round(sec));
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        const remS = s % 60;
-        if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(remS).padStart(2, "0")}s`;
-        return `${String(m).padStart(2, "0")}:${String(remS).padStart(2, "0")}`;
-    }
-
-    function renderCountdownEta() {
-        const pillEta = document.getElementById("floatingMatrixEta");
-        if (!pillEta) return;
-        const lang = localStorage.getItem("ws_lang") || "en";
-        const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
-        if (isTestRunning) {
-            pillEta.textContent = `${t.matrixEst}: ${formatCountdown(remainingEtaSec)}`;
-        } else {
-            const estMin = remainingEtaSec > 0 ? Math.max(1, Math.round(remainingEtaSec / 60)) : 0;
-            pillEta.textContent = `${t.matrixEst}: ~${estMin}m`;
-        }
-    }
-
-    function startCountdown(totalTests) {
-        isTestRunning = true;
-        remainingEtaSec = Math.max(1, totalTests) * getPerTestSeconds();
-        const dot = document.getElementById("pillLiveDot");
-        const gridIcon = document.getElementById("pillGridIcon");
-        if (dot) dot.style.display = "inline-block";
-        if (gridIcon) gridIcon.style.display = "none";
-        renderCountdownEta();
-        if (countdownTimer) clearInterval(countdownTimer);
-        countdownTimer = setInterval(() => {
-            if (remainingEtaSec > 0) remainingEtaSec--;
-            renderCountdownEta();
-        }, 1000);
-    }
-
-    function syncCountdown(tested, total) {
-        if (!isTestRunning) return;
-        const pillText = document.getElementById("floatingMatrixText");
-        if (pillText) {
-            const lang = localStorage.getItem("ws_lang") || "en";
-            const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
-            pillText.textContent = `${tested} / ${total} ${t.matrixTests}`;
-        }
-        const rem = Math.max(0, total - tested);
-        remainingEtaSec = rem * getPerTestSeconds();
-        renderCountdownEta();
-    }
-
-    function stopCountdown() {
-        isTestRunning = false;
-        if (countdownTimer) {
-            clearInterval(countdownTimer);
-            countdownTimer = null;
-        }
-        const dot = document.getElementById("pillLiveDot");
-        const gridIcon = document.getElementById("pillGridIcon");
-        if (dot) dot.style.display = "none";
-        if (gridIcon) gridIcon.style.display = "inline-block";
-        updateFloatingMatrix();
-    }
-
-    function updateFloatingMatrix() {
-        if (isTestRunning) return;
-        const pillText = document.getElementById("floatingMatrixText");
-        if (!pillText) return;
-        const lang = localStorage.getItem("ws_lang") || "en";
-        const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
-
-        const locsCount = document.querySelectorAll(".cb-location:checked").length;
-        const activeProtos = Object.keys(VALID_PROTOCOLS).filter(proto =>
-            document.querySelectorAll(`.cb-port-${proto}:checked`).length > 0
-        ).length;
-        const portsCount = document.querySelectorAll('[class*="cb-port-"]:checked').length;
-        const totalTests = locsCount * portsCount;
-
-        remainingEtaSec = totalTests * getPerTestSeconds();
-        pillText.textContent = `${t.matrixPrefix}: ${locsCount} ${t.matrixLocs} • ${activeProtos} ${t.matrixProtos} • ${portsCount} ${t.matrixPorts} → ${totalTests} ${t.matrixTests}`;
-        renderCountdownEta();
-    }
-
-    // Smart Protocol-Dependent Guards for SNI & Protocol Tweaks / Amnezia Presets
-    function updateProtocolDependentGuards() {
-        const hasChecked = (proto) => document.querySelectorAll(`.cb-port-${proto}:checked`).length > 0;
-        const anyChecked = Object.keys(VALID_PROTOCOLS).some(hasChecked);
-        const hasSNIProto = !anyChecked || hasChecked("stealth") || hasChecked("wstunnel");
-        const hasTweakProto = !anyChecked || hasChecked("wireguard") || hasChecked("udp") || hasChecked("tcp") || hasChecked("stealth");
-
-        const sniContainer = document.getElementById("sniContainer");
-        const customSniInput = document.getElementById("customSni");
-        const sniHint = document.getElementById("sniHint");
-        if (sniContainer && customSniInput) {
-            sniContainer.classList.toggle("is-proto-disabled", !hasSNIProto);
-            customSniInput.disabled = !hasSNIProto;
-            if (sniHint) {
-                sniHint.textContent = hasSNIProto
-                    ? "Active for Stealth & WStunnel (automatically skipped for other protocols)."
-                    : "Disabled: None of the selected protocols support SNI (Stealth / WStunnel only).";
-            }
-        }
-
-        const tweaksGroup = document.getElementById("tweaksModeGroup");
-        const tweaksSelect = document.getElementById("protocolTweaksMode");
-        const tweaksDesc = document.getElementById("protocolTweaksDesc");
-        const amneziaSelect = document.getElementById("amneziaConfig");
-        const btnRefreshAmn = document.getElementById("btnRefreshAmnezia");
-        const amneziaGroup = document.getElementById("amneziaGroup");
-        if (tweaksGroup && tweaksSelect) {
-            tweaksGroup.classList.toggle("is-proto-disabled", !hasTweakProto);
-            tweaksSelect.disabled = !hasTweakProto;
-            if (!hasTweakProto) {
-                if (amneziaGroup) amneziaGroup.classList.add("is-collapsed");
-                if (amneziaSelect) amneziaSelect.disabled = true;
-                if (btnRefreshAmn) btnRefreshAmn.disabled = true;
-                if (tweaksDesc) tweaksDesc.textContent = "Disabled: Selected protocols (WStunnel / IKEv2) do not support Protocol Tweaks or Amnezia presets.";
-            } else {
-                if (tweaksDesc) tweaksDesc.textContent = "Applies to WireGuard, OpenVPN (UDP/TCP), and Stealth (skipped for WStunnel / IKEv2).";
-                updateTweaksState();
-            }
-        }
-    }
-
+    // Trigger matrix & protocol guards on selection changes
     document.addEventListener("change", (e) => {
         if (e.target && (
             e.target.classList.contains("cb-location") ||
@@ -1482,6 +1485,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             e.target.classList.contains("cb-proto") ||
             e.target.id === "cbSelectAllProtocols" ||
             e.target.id === "speedEngine" ||
+            e.target.id === "speedWait" ||
             Array.from(e.target.classList).some(c => c.startsWith("cb-port-"))
         )) {
             updateFloatingMatrix();
@@ -1514,6 +1518,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (btnStopEl && btnStopEl.disabled) btnStopEl.textContent = dict.stopSession;
 
         updateFloatingMatrix();
+        updateProtocolDependentGuards();
     }
 
     // CLI Path Settings Modal (Checkbox-controlled)

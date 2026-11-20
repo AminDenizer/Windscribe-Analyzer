@@ -243,6 +243,17 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 	}
 	o.mu.Unlock()
 
+	// Pre-flight authentication check before running the queue
+	if stOut, stErr := o.worker.RunCLI(ctx, "status"); strings.Contains(strings.ToLower(stOut), "not logged in") || (stErr != nil && strings.Contains(strings.ToLower(stErr.Error()), "not logged in")) {
+		sendUpdate(EventUpdate{
+			Message:    "Windscribe CLI reports: Not logged in. Aborting test queue.",
+			Status:     "Done",
+			ErrorTitle: "Windscribe Not Logged In",
+			ErrorMsg:   "Windscribe CLI is not logged in (\"Not logged in. Run windscribe-cli login first\"). Please sign in to Windscribe and try again.",
+		})
+		return
+	}
+
 	// Inject and synchronize live Anti-Censorship settings (Amnezia, SNI, Server Routing, Large TLS) into Windscribe
 	sendUpdate(EventUpdate{
 		Message: "Synchronizing Anti-Censorship parameters with Windscribe Engine...",
