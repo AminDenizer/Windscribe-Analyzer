@@ -1456,3 +1456,8 @@ input[type="number"] {
     opacity: 0.45;
     cursor: not-allowed;
 }
+
+#btnShareNodes:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

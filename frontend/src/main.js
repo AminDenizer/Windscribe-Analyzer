@@ -535,9 +535,8 @@ function appendConnectedRow(item) {
     if (badge) badge.innerText = connectedCount;
 
     const btnShareNodes = document.getElementById("btnShareNodes");
-    const tabLiveTable = document.getElementById("tabLiveTable");
-    if (btnShareNodes && tabLiveTable && tabLiveTable.classList.contains("active")) {
-        btnShareNodes.style.display = "inline-flex";
+    if (btnShareNodes) {
+        btnShareNodes.disabled = false;
     }
 
     const row = document.createElement("tr");
@@ -577,7 +576,9 @@ function resetConnectedTable() {
     if (tableBody) tableBody.innerHTML = "";
     if (emptyState) emptyState.style.display = "block";
     if (badge) badge.innerText = "0";
-    if (btnShareNodes) btnShareNodes.style.display = "none";
+    if (btnShareNodes) {
+        btnShareNodes.disabled = true;
+    }
     verifiedNodesList = [];
     connectedCount = 0;
 }
@@ -1078,7 +1079,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (liveTableTab) liveTableTab.style.display = "block";
             if (logConsole) logConsole.style.display = "none";
             const btnShareNodes = document.getElementById("btnShareNodes");
-            if (btnShareNodes) btnShareNodes.style.display = verifiedNodesList.length > 0 ? "inline-flex" : "none";
+            if (btnShareNodes) {
+                btnShareNodes.style.display = "inline-flex";
+                btnShareNodes.disabled = verifiedNodesList.length === 0;
+            }
         });
 
         tabLiveConsole.addEventListener("click", () => {
