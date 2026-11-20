@@ -1461,3 +1461,67 @@ input[type="number"] {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* Interactive Spotlight Guided Tour */
+.tour-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    pointer-events: auto;
+}
+
+.tour-spotlight {
+    position: fixed;
+    border-radius: 10px;
+    border: 2px solid #58a6ff;
+    box-shadow: 0 0 0 9999px rgba(1, 4, 9, 0.72), 0 0 18px rgba(88, 166, 255, 0.55);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.tour-tooltip {
+    position: fixed;
+    width: 320px;
+    max-width: 90vw;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.65);
+    padding: 14px;
+    z-index: 9600;
+    transition: top 0.2s ease, left 0.2s ease;
+}
+
+.tour-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.tour-step-title {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #58a6ff;
+    unicode-bidi: plaintext;
+}
+
+.tour-step-counter {
+    font-size: 0.72rem;
+    color: #8b949e;
+    font-weight: 600;
+}
+
+.tour-step-body {
+    font-size: 0.8rem;
+    color: #c9d1d9;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    unicode-bidi: plaintext;
+}
+
+.tour-tooltip-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

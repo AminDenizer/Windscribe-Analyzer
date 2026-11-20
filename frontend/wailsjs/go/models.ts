@@ -36,6 +36,26 @@ export namespace main {
 	        this.internalDns = source["internalDns"];
 	    }
 	}
+	export class EnvironmentStatus {
+	    cliFound: boolean;
+	    cliPath: string;
+	    loggedIn: boolean;
+	    sessionLocked: boolean;
+	    errorMessage: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EnvironmentStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cliFound = source["cliFound"];
+	        this.cliPath = source["cliPath"];
+	        this.loggedIn = source["loggedIn"];
+	        this.sessionLocked = source["sessionLocked"];
+	        this.errorMessage = source["errorMessage"];
+	    }
+	}
 	export class LocationData {
 	    location: string;
 	    city: string;

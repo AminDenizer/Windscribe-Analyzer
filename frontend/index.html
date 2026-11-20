@@ -19,7 +19,7 @@
             <!-- Scrollable Configuration Area -->
             <div class="sidebar-scroll-body">
                 <!-- Network Country & ISP / Operator -->
-                <div class="form-group">
+                <div class="form-group" id="networkCountryGroup">
                     <div class="label-with-action">
                         <label for="networkCountry" data-i18n="networkCountry">Network Country</label>
                         <button type="button" id="btnAddCountry" class="small-btn" title="Add Custom Country" data-i18n="customBtn">+ Custom</button>
@@ -54,7 +54,7 @@
                 </div>
 
                 <!-- Anti-Censorship Panel -->
-                <div class="section-card">
+                <div class="section-card" id="antiCensorshipCard">
                     <div class="section-header">
                         <span data-i18n="antiCensorship">Anti-Censorship</span>
                     </div>
@@ -204,7 +204,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group stabilize-card">
+                <div class="form-group stabilize-card" id="stabilizeCard">
                     <div class="stabilize-header">
                         <label class="master-checkbox-label" style="margin:0; cursor:pointer;">
                             <input type="checkbox" id="stabilizeEnabled" checked>
@@ -239,7 +239,7 @@
                         <option value="both" data-i18n="engineBoth">Both (Ookla + Cloudflare)</option>
                     </select>
                 </div>
-                <div class="form-group stabilize-card">
+                <div class="form-group stabilize-card" id="executionModesCard">
                     <div class="stabilize-header" style="margin-bottom: 6px;">
                         <span class="sub-label" style="margin:0; font-weight:600; color:#c9d1d9;" data-i18n="executionModes">Execution Modes</span>
                     </div>
@@ -259,7 +259,7 @@
                     </div>
                     <label class="master-checkbox-label" style="margin-bottom: 0; cursor:pointer; font-size:12px;">
                         <input type="checkbox" id="connectAndHold">
-                        <span data-i18n="connectAndHold">Connect &amp; Hold (Stop on First Success)</span>
+                        <span data-i18n="connectAndHold">Pause on First Connected Node</span>
                     </label>
                 </div>
                 <div style="margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: rgba(56, 139, 253, 0.08); border: 1px solid rgba(56, 139, 253, 0.25); font-size: 11px; color: #8b949e; line-height: 1.4;">
@@ -292,6 +292,13 @@
                             <path d="M8 7.5L11.5 12L8 16.5H10.5L12.5 13.8L14.5 16.5H17L13.5 12L17 7.5H14.5L12.5 10.2L10.5 7.5H8Z" fill="#FFFFFF"/>
                         </svg>
                         <span data-i18n="openExcel">Open Excel (.xlsx)</span>
+                    </button>
+                    <button class="settings-icon-btn" id="btnStartTour" type="button" title="Interactive Guide">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
                     </button>
                     <button class="settings-icon-btn" id="btnOpenLang" type="button" title="Language">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -376,6 +383,12 @@
                         <button class="tab-btn" id="tabLiveTable" type="button"><span data-i18n="verifiedNodes">⚡ Verified Nodes</span> (<span id="connectedBadge" class="connected-badge">0</span>)</button>
                     </div>
                     <div style="display:flex; gap:6px; align-items:center;">
+                        <select id="nodesSortSelect" class="modern-select" style="display:none; width:auto; padding:3px 26px 3px 8px; font-size:0.75rem; height:26px;">
+                            <option value="time-desc" data-i18n="sortTimeDesc">Newest First</option>
+                            <option value="time-asc" data-i18n="sortTimeAsc">Oldest First</option>
+                            <option value="best" data-i18n="sortBest">Best Score</option>
+                            <option value="download" data-i18n="sortDownload">Fastest Download</option>
+                        </select>
                         <button class="small-btn" id="btnShareNodes" type="button" disabled style="display:none; color:#58a6ff; border-color:rgba(56,139,253,0.4);" title="Share Verified Nodes">Share</button>
                         <button class="small-btn" id="btnClearLogs" type="button" data-i18n="clear">Clear</button>
                     </div>
@@ -517,6 +530,50 @@
                     <button type="button" class="lang-choice-btn" data-lang="fa">🇮🇷 پارسی</button>
                     <button type="button" class="lang-choice-btn" data-lang="ru">🇷🇺 Русский</button>
                     <button type="button" class="lang-choice-btn" data-lang="zh">🇨🇳 简体中文</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Startup Network & Operator Confirmation Modal -->
+    <div id="networkSetupModal" class="dark-modal-backdrop" style="display:none;">
+        <div class="dark-modal" style="width: 430px;">
+            <div class="dark-modal-header" style="background: rgba(56, 139, 253, 0.08);">
+                <span class="dark-modal-title" data-i18n="netSetupTitle">Confirm Current Network</span>
+            </div>
+            <div class="dark-modal-body" style="display:flex; flex-direction:column; gap:12px;">
+                <p style="margin:0; color:#8b949e; font-size:0.8rem;" data-i18n="netSetupSubtitle">Please confirm your active country and ISP/operator so your benchmark logs and reports are categorized accurately.</p>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="modalCountrySelect" data-i18n="networkCountry">Network Country</label>
+                    <select id="modalCountrySelect" class="modern-select"></select>
+                    <input type="text" id="modalCustomCountryInput" class="modern-input" placeholder="Type custom country..." style="display:none; margin-top:6px;">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="modalIspSelect" data-i18n="networkIsp">Network ISP / Operator</label>
+                    <select id="modalIspSelect" class="modern-select"></select>
+                    <input type="text" id="modalCustomIspInput" class="modern-input" placeholder="Type custom ISP / operator..." style="display:none; margin-top:6px;">
+                </div>
+            </div>
+            <div class="dark-modal-footer">
+                <button type="button" id="btnConfirmNetworkSetup" class="btn primary" style="padding:8px 20px;" data-i18n="netSetupConfirm">Confirm &amp; Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Spotlight Guided Tour -->
+    <div id="tourOverlay" class="tour-overlay" style="display:none;">
+        <div id="tourSpotlight" class="tour-spotlight"></div>
+        <div id="tourTooltip" class="tour-tooltip">
+            <div class="tour-tooltip-header">
+                <span id="tourStepTitle" class="tour-step-title"></span>
+                <span id="tourStepCounter" class="tour-step-counter"></span>
+            </div>
+            <div id="tourStepBody" class="tour-step-body"></div>
+            <div class="tour-tooltip-footer">
+                <button type="button" id="btnTourSkip" class="small-btn" data-i18n="tourSkip">Skip</button>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" id="btnTourPrev" class="small-btn" data-i18n="tourPrev">Back</button>
+                    <button type="button" id="btnTourNext" class="btn primary" style="padding:5px 14px; font-size:0.78rem;" data-i18n="tourNext">Next</button>
                 </div>
             </div>
         </div>

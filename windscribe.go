@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -17,6 +18,30 @@ func NewWindscribeWorker() *WindscribeWorker {
 	return &WindscribeWorker{
 		cliPath: defaultWindscribeCLIPath(),
 	}
+}
+
+func (w *WindscribeWorker) CLIExists() bool {
+	if w.cliPath == "" {
+		return false
+	}
+	if _, err := os.Stat(w.cliPath); err == nil {
+		return true
+	}
+	if _, err := exec.LookPath(w.cliPath); err == nil {
+		return true
+	}
+	return false
+}
+
+func (w *WindscribeWorker) RecoverFromNotLoggedIn(ctx context.Context) bool {
+	restartPlatformWindscribeApp()
+	time.Sleep(2 * time.Second)
+	out, err := w.RunCLI(ctx, "status")
+	combined := strings.ToLower(out)
+	if err != nil {
+		combined += " " + strings.ToLower(err.Error())
+	}
+	return !strings.Contains(combined, "not logged in")
 }
 
 func (w *WindscribeWorker) RunCLI(ctx context.Context, args ...string) (string, error) {

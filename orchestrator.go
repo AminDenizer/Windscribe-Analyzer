@@ -243,7 +243,17 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 	}
 	o.mu.Unlock()
 
-	// Pre-flight authentication & session check before running the queue
+	// Pre-flight CLI existence, authentication & session check before running the queue
+	if !o.worker.CLIExists() {
+		sendUpdate(EventUpdate{
+			Message:    fmt.Sprintf("Windscribe CLI not found at %s. Aborting test queue.", o.worker.cliPath),
+			Status:     "Done",
+			ErrorTitle: "Windscribe Not Found",
+			ErrorMsg:   fmt.Sprintf("windscribe-cli was not found at:\n%s\n\nPlease install Windscribe or enable Custom CLI Path in Settings.", o.worker.cliPath),
+		})
+		return
+	}
+
 	stOut, stErr := o.worker.RunCLI(ctx, "status")
 	stLower := strings.ToLower(stOut)
 	if stErr != nil {
@@ -251,12 +261,22 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 	}
 	if strings.Contains(stLower, "not logged in") {
 		sendUpdate(EventUpdate{
-			Message:    "Windscribe CLI reports: Not logged in. Aborting test queue.",
-			Status:     "Done",
-			ErrorTitle: "Windscribe Not Logged In",
-			ErrorMsg:   "Windscribe CLI is not logged in (\"Not logged in. Run windscribe-cli login first\"). Please sign in to Windscribe and try again.",
+			Message: "Windscribe CLI reported 'Not logged in'. Attempting automatic Windscribe restart recovery...",
+			Status:  "Recovering...",
 		})
-		return
+		if !o.worker.RecoverFromNotLoggedIn(ctx) {
+			sendUpdate(EventUpdate{
+				Message:    "Windscribe CLI still reports 'Not logged in' after restart. Aborting test queue.",
+				Status:     "Done",
+				ErrorTitle: "Windscribe Not Logged In",
+				ErrorMsg:   "Windscribe CLI reports 'Not logged in' even after restarting Windscribe. Please sign in to Windscribe and try again.",
+			})
+			return
+		}
+		sendUpdate(EventUpdate{
+			Message: "Windscribe session recovered successfully after restart.",
+			Status:  "Ready",
+		})
 	}
 	if strings.Contains(stLower, "another user session") {
 		sendUpdate(EventUpdate{
@@ -334,13 +354,22 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		}
 
 		err := o.worker.Connect(ctx, targetLoc, task.Protocol, task.Port)
+		if err != nil && strings.Contains(err.Error(), "NOT_LOGGED_IN") {
+			sendUpdate(EventUpdate{
+				Message: fmt.Sprintf("Windscribe CLI glitched ('Not logged in') on %s (%s:%d). Restarting Windscribe to recover...", targetLoc, task.Protocol, task.Port),
+				Status:  "Recovering...",
+			})
+			if o.worker.RecoverFromNotLoggedIn(ctx) {
+				err = o.worker.Connect(ctx, targetLoc, task.Protocol, task.Port)
+			}
+		}
 		if err != nil {
 			if strings.Contains(err.Error(), "NOT_LOGGED_IN") {
 				sendUpdate(EventUpdate{
-					Message:    "Windscribe CLI reports: Not logged in. Aborting test queue.",
+					Message:    "Windscribe CLI still reports: Not logged in after restart. Aborting test queue.",
 					Status:     "Done",
 					ErrorTitle: "Windscribe Not Logged In",
-					ErrorMsg:   "Windscribe CLI is not logged in (\"Not logged in. Run windscribe-cli login first\"). Please sign in to Windscribe and try again.",
+					ErrorMsg:   "Windscribe CLI is not logged in even after restarting Windscribe. Please sign in to Windscribe and try again.",
 				})
 				return
 			}
@@ -771,8 +800,8 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		o.completedResults = completedResults
 		o.mu.Unlock()
 
-		// Connect & Hold: stop testing and keep the first working tunnel active
-		if config.ConnectAndHold {
+		// Pause on First Connected Node: only stop on first hit (do NOT pause again after Continue Test!)
+		if config.ConnectAndHold && !config.IsResume {
 			o.mu.Lock()
 			o.remainingQueue = queue[i+1:]
 			remCount := len(o.remainingQueue)
@@ -788,8 +817,8 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			}
 
 			sendUpdate(EventUpdate{
-				Message:     fmt.Sprintf("🎯 Connect & Hold: Connected to %s (%s:%d). VPN tunnel kept alive (%d remaining in queue).", targetLoc, task.Protocol, task.Port, remCount),
-				Status:      "Connected & Held",
+				Message:     fmt.Sprintf("Paused on first connected node: %s (%s:%d). Windscribe stays connected (%d remaining in queue).", targetLoc, task.Protocol, task.Port, remCount),
+				Status:      "Connected (Paused)",
 				CanResume:   remCount > 0,
 				TestedCount: len(completedResults),
 				TotalCount:  o.totalTasks,

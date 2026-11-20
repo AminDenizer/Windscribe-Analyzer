@@ -404,3 +404,40 @@ func (a *App) SetCustomCLIPath(customPath string) string {
 	}
 	return a.worker.cliPath
 }
+
+type EnvironmentStatus struct {
+	CLIFound      bool   `json:"cliFound"`
+	CLIPath       string `json:"cliPath"`
+	LoggedIn      bool   `json:"loggedIn"`
+	SessionLocked bool   `json:"sessionLocked"`
+	ErrorMessage  string `json:"errorMessage"`
+}
+
+// CheckEnvironment verifies Windscribe installation, CLI availability, and session status
+func (a *App) CheckEnvironment() EnvironmentStatus {
+	res := EnvironmentStatus{
+		CLIFound: a.worker.CLIExists(),
+		CLIPath:  a.worker.cliPath,
+		LoggedIn: true,
+	}
+	if !res.CLIFound {
+		res.LoggedIn = false
+		res.ErrorMessage = fmt.Sprintf("windscribe-cli executable was not found at \"%s\". Install Windscribe or configure a custom CLI path in Settings.", a.worker.cliPath)
+		return res
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := a.worker.RunCLI(ctx, "status")
+	combined := strings.ToLower(out)
+	if err != nil {
+		combined += " " + strings.ToLower(err.Error())
+	}
+	if strings.Contains(combined, "another user session") {
+		res.SessionLocked = true
+		res.ErrorMessage = "Windscribe is already running in another Windows user session."
+	} else if strings.Contains(combined, "not logged in") {
+		res.LoggedIn = false
+		res.ErrorMessage = "Windscribe CLI reports 'Not logged in'."
+	}
+	return res
+}
