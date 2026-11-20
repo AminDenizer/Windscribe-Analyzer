@@ -394,10 +394,21 @@ let countdownTimer = null;
 let remainingEtaSec = 0;
 let isTestRunning = false;
 
-function getPerTestSeconds() {
+function getTimingParams() {
+    const connTimeout = parseInt(document.getElementById("connTimeout")?.value) || 25;
     const speedWait = parseInt(document.getElementById("speedWait")?.value) || 5;
+    const stabEnabled = document.getElementById("stabilizeEnabled")?.checked !== false;
+    const stabTimeout = stabEnabled ? (parseInt(document.getElementById("stabilizeTimeout")?.value) || 60) : 0;
     const engine = document.getElementById("speedEngine")?.value || "ookla";
-    return 10 + speedWait + (engine === "both" ? 22 : 12);
+    const speedSec = engine === "both" ? 22 : 12;
+
+    const avgPerTest = Math.max(5, Math.round((connTimeout * 0.6) + (stabTimeout * 0.45) + speedWait + (speedSec * 0.6)));
+    const maxPerTest = connTimeout + stabTimeout + speedWait + speedSec;
+    return { avgPerTest, maxPerTest };
+}
+
+function getPerTestSeconds() {
+    return getTimingParams().avgPerTest;
 }
 
 function formatCountdown(sec) {
@@ -409,7 +420,7 @@ function formatCountdown(sec) {
     return `${String(m).padStart(2, "0")}:${String(remS).padStart(2, "0")}`;
 }
 
-function renderCountdownEta() {
+function renderCountdownEta(totalTestsOverride = null) {
     const pillEta = document.getElementById("floatingMatrixEta");
     if (!pillEta) return;
     const lang = localStorage.getItem("ws_lang") || "en";
@@ -417,8 +428,17 @@ function renderCountdownEta() {
     if (isTestRunning) {
         pillEta.textContent = `${t.matrixEst}: ${formatCountdown(remainingEtaSec)}`;
     } else {
-        const estMin = remainingEtaSec > 0 ? Math.max(1, Math.round(remainingEtaSec / 60)) : 0;
-        pillEta.textContent = `${t.matrixEst}: ~${estMin}m`;
+        const locsCount = document.querySelectorAll(".cb-location:checked").length;
+        const portsCount = document.querySelectorAll('[class*="cb-port-"]:checked').length;
+        const totalTests = totalTestsOverride !== null ? totalTestsOverride : (locsCount * portsCount);
+        if (totalTests === 0) {
+            pillEta.textContent = `${t.matrixEst}: ~0m`;
+            return;
+        }
+        const { avgPerTest, maxPerTest } = getTimingParams();
+        const avgMin = Math.max(1, Math.round((totalTests * avgPerTest) / 60));
+        const maxMin = Math.max(avgMin, Math.round((totalTests * maxPerTest) / 60));
+        pillEta.textContent = avgMin === maxMin ? `${t.matrixEst}: ~${avgMin}m` : `${t.matrixEst}: ~${avgMin}m–${maxMin}m`;
     }
 }
 
@@ -1536,6 +1556,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Trigger matrix & protocol guards on selection changes
+    ["connTimeout", "speedWait", "stabilizeTimeout"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("input", () => updateFloatingMatrix());
+    });
     document.addEventListener("change", (e) => {
         if (e.target && (
             e.target.classList.contains("cb-location") ||
@@ -1545,6 +1569,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             e.target.id === "cbSelectAllProtocols" ||
             e.target.id === "speedEngine" ||
             e.target.id === "speedWait" ||
+            e.target.id === "connTimeout" ||
+            e.target.id === "stabilizeTimeout" ||
             Array.from(e.target.classList).some(c => c.startsWith("cb-port-"))
         )) {
             updateFloatingMatrix();
@@ -1777,6 +1803,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btnTourSkip = document.getElementById("btnTourSkip");
     const btnStartTour = document.getElementById("btnStartTour");
     let currentTourIdx = 0;
+    let tourResizeObserver = null;
+
+    function positionSpotlightForTarget(target) {
+        if (!target || !tourSpotlight || !tourTooltip) return;
+        const sidebarBody = document.querySelector(".sidebar-scroll-body");
+        let rect = target.getBoundingClientRect();
+
+        if (sidebarBody && sidebarBody.contains(target)) {
+            const sbRect = sidebarBody.getBoundingClientRect();
+            const top = Math.max(sbRect.top + 2, rect.top);
+            const bottom = Math.min(sbRect.bottom - 2, rect.bottom);
+            if (bottom > top) {
+                rect = {
+                    top: top,
+                    left: rect.left,
+                    right: rect.right,
+                    bottom: bottom,
+                    width: rect.width,
+                    height: bottom - top
+                };
+            }
+        }
+
+        const pad = 4;
+        tourSpotlight.style.top = `${Math.max(4, rect.top - pad)}px`;
+        tourSpotlight.style.left = `${Math.max(4, rect.left - pad)}px`;
+        tourSpotlight.style.width = `${rect.width + pad * 2}px`;
+        tourSpotlight.style.height = `${rect.height + pad * 2}px`;
+
+        let tipTop = rect.top;
+        let tipLeft = rect.right + 16;
+        if (rect.right + 345 < window.innerWidth) {
+            tipLeft = rect.right + 16;
+            tipTop = Math.max(16, Math.min(window.innerHeight - 210, rect.top));
+        } else {
+            tipTop = rect.top - 190;
+            if (tipTop < 16) tipTop = Math.min(window.innerHeight - 200, rect.bottom + 14);
+            tipLeft = Math.max(16, Math.min(window.innerWidth - 336, rect.left));
+        }
+        tourTooltip.style.top = `${tipTop}px`;
+        tourTooltip.style.left = `${tipLeft}px`;
+    }
 
     function renderTourStep() {
         if (!tourOverlay || !tourSpotlight || !tourTooltip) return;
@@ -1789,30 +1857,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             closeGuidedTour(true);
             return;
         }
+        if (tourResizeObserver) {
+            tourResizeObserver.disconnect();
+            tourResizeObserver = null;
+        }
         const step = steps[currentTourIdx];
         const target = document.querySelector(step.target);
         if (target) {
-            target.scrollIntoView({ behavior: "smooth", block: "center" });
-            setTimeout(() => {
-                const rect = target.getBoundingClientRect();
-                const pad = 6;
-                tourSpotlight.style.top = `${Math.max(4, rect.top - pad)}px`;
-                tourSpotlight.style.left = `${Math.max(4, rect.left - pad)}px`;
-                tourSpotlight.style.width = `${rect.width + pad * 2}px`;
-                tourSpotlight.style.height = `${rect.height + pad * 2}px`;
-
-                let tipTop = rect.bottom + 14;
-                let tipLeft = rect.left;
-                if (rect.right + 340 < window.innerWidth) {
-                    tipLeft = rect.right + 16;
-                    tipTop = Math.max(16, Math.min(window.innerHeight - 200, rect.top));
-                } else {
-                    if (tipTop + 180 > window.innerHeight) tipTop = Math.max(16, rect.top - 190);
-                    tipLeft = Math.max(16, Math.min(window.innerWidth - 336, rect.left));
-                }
-                tourTooltip.style.top = `${tipTop}px`;
-                tourTooltip.style.left = `${tipLeft}px`;
-            }, 180);
+            target.scrollIntoView({ behavior: "instant", block: "start" });
+            requestAnimationFrame(() => positionSpotlightForTarget(target));
+            if (typeof ResizeObserver !== "undefined") {
+                tourResizeObserver = new ResizeObserver(() => positionSpotlightForTarget(target));
+                tourResizeObserver.observe(target);
+            }
         }
         if (tourStepTitle) tourStepTitle.textContent = step.title;
         if (tourStepBody) tourStepBody.textContent = step.body;
@@ -1829,6 +1886,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function closeGuidedTour(markDone) {
+        if (tourResizeObserver) {
+            tourResizeObserver.disconnect();
+            tourResizeObserver = null;
+        }
         if (tourOverlay) tourOverlay.style.display = "none";
         if (markDone) localStorage.setItem("ws_tour_done", "true");
     }
@@ -1837,6 +1898,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (btnTourNext) btnTourNext.addEventListener("click", () => { currentTourIdx++; renderTourStep(); });
     if (btnTourSkip) btnTourSkip.addEventListener("click", () => closeGuidedTour(true));
     if (btnStartTour) btnStartTour.addEventListener("click", startGuidedTour);
+    const sidebarScrollEl = document.querySelector(".sidebar-scroll-body");
+    const syncTourOnScrollOrResize = () => {
+        if (!tourOverlay || tourOverlay.style.display !== "block") return;
+        const lang = localStorage.getItem("ws_lang") || "en";
+        const steps = (TRANSLATIONS[lang] || TRANSLATIONS.en).tourSteps;
+        const step = steps && steps[currentTourIdx];
+        if (step) {
+            const target = document.querySelector(step.target);
+            if (target) positionSpotlightForTarget(target);
+        }
+    };
+    if (sidebarScrollEl) sidebarScrollEl.addEventListener("scroll", syncTourOnScrollOrResize);
+    window.addEventListener("resize", syncTourOnScrollOrResize);
 
     async function runStartupEnvCheck() {
         try {
