@@ -435,11 +435,11 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 		if config.StabilizeEnabled {
 			maxSec := config.StabilizeTimeout
 			if maxSec <= 0 {
-				maxSec = 60
+				maxSec = 30
 			}
 			targetVal := config.StabilizeMinBytes
 			if targetVal <= 0 {
-				targetVal = 500
+				targetVal = 250
 			}
 			unit := strings.ToUpper(strings.TrimSpace(config.StabilizeUnit))
 			if unit != "MB" {

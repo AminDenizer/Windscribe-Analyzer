@@ -398,7 +398,7 @@ function getTimingParams() {
     const connTimeout = parseInt(document.getElementById("connTimeout")?.value) || 25;
     const speedWait = parseInt(document.getElementById("speedWait")?.value) || 5;
     const stabEnabled = document.getElementById("stabilizeEnabled")?.checked !== false;
-    const stabTimeout = stabEnabled ? (parseInt(document.getElementById("stabilizeTimeout")?.value) || 60) : 0;
+    const stabTimeout = stabEnabled ? (parseInt(document.getElementById("stabilizeTimeout")?.value) || 30) : 0;
     const engine = document.getElementById("speedEngine")?.value || "ookla";
     const speedSec = engine === "both" ? 22 : 12;
 
@@ -1271,9 +1271,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             timeout: parseInt(document.getElementById("connTimeout").value) || 25,
             speedWait: parseInt(document.getElementById("speedWait").value) || 3,
             stabilizeEnabled: document.getElementById("stabilizeEnabled") ? document.getElementById("stabilizeEnabled").checked : true,
-            stabilizeMinBytes: parseInt(document.getElementById("stabilizeMinBytes")?.value) || 500,
+            stabilizeMinBytes: parseInt(document.getElementById("stabilizeMinBytes")?.value) || 250,
             stabilizeUnit: document.getElementById("stabilizeUnitBtn")?.dataset.unit || "KB",
-            stabilizeTimeout: parseInt(document.getElementById("stabilizeTimeout")?.value) || 60,
+            stabilizeTimeout: parseInt(document.getElementById("stabilizeTimeout")?.value) || 30,
             speedEngine: document.getElementById("speedEngine")?.value || "ookla",
             shuffleLocations: document.getElementById("shuffleLocations")?.checked || false,
             shuffleProtocols: document.getElementById("shuffleProtocols")?.checked || false,

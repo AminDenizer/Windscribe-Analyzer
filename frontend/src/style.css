@@ -1322,9 +1322,10 @@ input[type="number"] {
 
 /* Hide Instead of Lock Smooth Accordion */
 .collapsible-field {
-    max-height: 220px;
+    max-height: 320px;
     opacity: 1;
     overflow: hidden;
+    padding: 0 2px;
     transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease, padding 0.25s ease;
 }
 
@@ -1415,12 +1416,18 @@ input[type="number"] {
     transform: translateY(-1px);
 }
 
-/* Natural bidi & clean alignment for Persian text inside LTR layout */
+/* Natural bidi & clean left alignment for Persian labels inside LTR layout */
 [lang="fa"] [data-i18n],
 [lang="fa"] label,
 [lang="fa"] .hint-text,
 [lang="fa"] .sub-label {
-    unicode-bidi: plaintext;
+    direction: rtl;
+    unicode-bidi: embed;
+}
+
+[lang="fa"] label:not(.master-checkbox-label),
+[lang="fa"] .sub-label {
+    text-align: left;
 }
 
 [lang="fa"] #firewallTipBox,
@@ -1431,8 +1438,8 @@ input[type="number"] {
     direction: rtl;
     text-align: right;
     unicode-bidi: embed;
-    padding-left: 2px;
-    padding-right: 2px;
+    padding: 2px 4px;
+    line-height: 1.5;
 }
 
 [lang="fa"] select.modern-select,
