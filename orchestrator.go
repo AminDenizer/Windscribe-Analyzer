@@ -243,13 +243,27 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 	}
 	o.mu.Unlock()
 
-	// Pre-flight authentication check before running the queue
-	if stOut, stErr := o.worker.RunCLI(ctx, "status"); strings.Contains(strings.ToLower(stOut), "not logged in") || (stErr != nil && strings.Contains(strings.ToLower(stErr.Error()), "not logged in")) {
+	// Pre-flight authentication & session check before running the queue
+	stOut, stErr := o.worker.RunCLI(ctx, "status")
+	stLower := strings.ToLower(stOut)
+	if stErr != nil {
+		stLower += " " + strings.ToLower(stErr.Error())
+	}
+	if strings.Contains(stLower, "not logged in") {
 		sendUpdate(EventUpdate{
 			Message:    "Windscribe CLI reports: Not logged in. Aborting test queue.",
 			Status:     "Done",
 			ErrorTitle: "Windscribe Not Logged In",
 			ErrorMsg:   "Windscribe CLI is not logged in (\"Not logged in. Run windscribe-cli login first\"). Please sign in to Windscribe and try again.",
+		})
+		return
+	}
+	if strings.Contains(stLower, "another user session") {
+		sendUpdate(EventUpdate{
+			Message:    "Windscribe is running in another user session. Aborting test queue.",
+			Status:     "Done",
+			ErrorTitle: "Windscribe Session Mismatch",
+			ErrorMsg:   "Windscribe is already running in another Windows user session. Please run Windscribe and the tester under the same user session.",
 		})
 		return
 	}
@@ -327,6 +341,15 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					Status:     "Done",
 					ErrorTitle: "Windscribe Not Logged In",
 					ErrorMsg:   "Windscribe CLI is not logged in (\"Not logged in. Run windscribe-cli login first\"). Please sign in to Windscribe and try again.",
+				})
+				return
+			}
+			if strings.Contains(err.Error(), "SESSION_LOCKED") {
+				sendUpdate(EventUpdate{
+					Message:    "Windscribe is running in another user session. Aborting test queue.",
+					Status:     "Done",
+					ErrorTitle: "Windscribe Session Mismatch",
+					ErrorMsg:   "Windscribe is already running in another Windows user session. Please run Windscribe and the tester under the same user session.",
 				})
 				return
 			}

@@ -1719,8 +1719,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (btnCopyShareText && shareTextArea) {
         btnCopyShareText.addEventListener("click", async () => {
             await navigator.clipboard.writeText(shareTextArea.value);
-            btnCopyShareText.textContent = "✅ Copied!";
-            setTimeout(() => { btnCopyShareText.textContent = "📋 Copy Text"; }, 1500);
+            btnCopyShareText.textContent = "Copied";
+            setTimeout(() => { btnCopyShareText.textContent = "Copy Text"; }, 1500);
         });
     }
     if (btnCopyShareImg && sharePreviewCanvas) {
@@ -1728,8 +1728,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             sharePreviewCanvas.toBlob(async (blob) => {
                 if (blob && navigator.clipboard && window.ClipboardItem) {
                     await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-                    btnCopyShareImg.textContent = "✅ Copied!";
-                    setTimeout(() => { btnCopyShareImg.textContent = "🖼️ Copy Image"; }, 1500);
+                    btnCopyShareImg.textContent = "Copied";
+                    setTimeout(() => { btnCopyShareImg.textContent = "Copy Image"; }, 1500);
                 }
             }, "image/png");
         });

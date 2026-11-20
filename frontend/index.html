@@ -376,7 +376,7 @@
                         <button class="tab-btn" id="tabLiveTable" type="button"><span data-i18n="verifiedNodes">⚡ Verified Nodes</span> (<span id="connectedBadge" class="connected-badge">0</span>)</button>
                     </div>
                     <div style="display:flex; gap:6px; align-items:center;">
-                        <button class="small-btn" id="btnShareNodes" type="button" disabled style="display:none; color:#58a6ff; border-color:rgba(56,139,253,0.4);" title="Share Verified Nodes">📤 Share</button>
+                        <button class="small-btn" id="btnShareNodes" type="button" disabled style="display:none; color:#58a6ff; border-color:rgba(56,139,253,0.4);" title="Share Verified Nodes">Share</button>
                         <button class="small-btn" id="btnClearLogs" type="button" data-i18n="clear">Clear</button>
                     </div>
                 </div>
@@ -488,7 +488,6 @@
     <div id="shareModal" class="dark-modal-backdrop" style="display:none;">
         <div class="dark-modal" style="width: 580px; max-width: 94vw;">
             <div class="dark-modal-header" style="background: rgba(56, 139, 253, 0.08);">
-                <span class="dark-modal-icon">📤</span>
                 <span class="dark-modal-title">Share Verified Nodes</span>
                 <button type="button" id="shareModalClose" class="toast-close" title="Close">✕</button>
             </div>
@@ -497,9 +496,9 @@
                 <textarea id="shareTextArea" class="modern-input" rows="5" readonly style="font-family:monospace; font-size:11.5px; resize:vertical;"></textarea>
             </div>
             <div class="dark-modal-footer" style="gap:8px;">
-                <button type="button" id="btnCopyShareText" class="small-btn" style="padding:7px 14px;">📋 Copy Text</button>
-                <button type="button" id="btnCopyShareImg" class="small-btn" style="padding:7px 14px;">🖼️ Copy Image</button>
-                <button type="button" id="btnDownloadShareImg" class="btn primary" style="padding:7px 16px;">💾 Save PNG</button>
+                <button type="button" id="btnCopyShareText" class="small-btn" style="padding:7px 14px;">Copy Text</button>
+                <button type="button" id="btnCopyShareImg" class="small-btn" style="padding:7px 14px;">Copy Image</button>
+                <button type="button" id="btnDownloadShareImg" class="btn primary" style="padding:7px 16px;">Save PNG</button>
             </div>
         </div>
     </div>

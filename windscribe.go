@@ -47,8 +47,6 @@ func (w *WindscribeWorker) EnsureDisconnected(ctx context.Context) error {
 	isDisconnected := err == nil && (strings.Contains(upper, "CONNECT STATE: DISCONNECTED") || (strings.Contains(upper, "DISCONNECTED") && !strings.Contains(upper, "DISCONNECTING")))
 
 	if isDisconnected {
-		// Even if Windscribe reports Disconnected, ensure no leaked zombie helpers linger
-		killPlatformVPNHelpers()
 		return nil
 	}
 
@@ -68,7 +66,6 @@ func (w *WindscribeWorker) EnsureDisconnected(ctx context.Context) error {
 		if err == nil {
 			upper := strings.ToUpper(out)
 			if strings.Contains(upper, "CONNECT STATE: DISCONNECTED") || (strings.Contains(upper, "DISCONNECTED") && !strings.Contains(upper, "DISCONNECTING")) {
-				killPlatformVPNHelpers()
 				time.Sleep(800 * time.Millisecond)
 				return nil
 			}
@@ -104,8 +101,16 @@ func (w *WindscribeWorker) ApplyConnectionTweaks(ctx context.Context, config Tes
 func (w *WindscribeWorker) Connect(ctx context.Context, city string, protocol string, port int) error {
 	targetArg := fmt.Sprintf("%s:%d", protocol, port)
 	out, err := w.RunCLI(ctx, "connect", "-n", city, targetArg)
-	if strings.Contains(strings.ToLower(out), "not logged in") || (err != nil && strings.Contains(strings.ToLower(err.Error()), "not logged in")) {
+	lowerOut := strings.ToLower(out)
+	lowerErr := ""
+	if err != nil {
+		lowerErr = strings.ToLower(err.Error())
+	}
+	if strings.Contains(lowerOut, "not logged in") || strings.Contains(lowerErr, "not logged in") {
 		return fmt.Errorf("NOT_LOGGED_IN: Windscribe CLI is not logged in. Run \"windscribe-cli login\" or sign in via the Windscribe app")
+	}
+	if strings.Contains(lowerOut, "another user session") || strings.Contains(lowerErr, "another user session") {
+		return fmt.Errorf("SESSION_LOCKED: Windscribe is running in another user session. Run the tester and Windscribe in the same Windows session")
 	}
 	if err != nil {
 		trimmed := strings.TrimSpace(out)
