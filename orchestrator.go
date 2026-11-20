@@ -73,6 +73,8 @@ type EventUpdate struct {
 	TestedCount    int         `json:"testedCount"`
 	TotalCount     int         `json:"totalCount"`
 	ConnectedItem  *TestResult `json:"connectedItem,omitempty"`
+	ErrorTitle     string      `json:"errorTitle,omitempty"`
+	ErrorMsg       string      `json:"errorMsg,omitempty"`
 }
 
 func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig, onConnected func(), sendUpdate func(EventUpdate)) {
@@ -308,6 +310,15 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 
 		err := o.worker.Connect(ctx, targetLoc, task.Protocol, task.Port)
 		if err != nil {
+			if strings.Contains(err.Error(), "NOT_LOGGED_IN") {
+				sendUpdate(EventUpdate{
+					Message:    "Windscribe CLI reports: Not logged in. Aborting test queue.",
+					Status:     "Done",
+					ErrorTitle: "Windscribe Not Logged In",
+					ErrorMsg:   "Windscribe CLI is not logged in (\"Not logged in. Run windscribe-cli login first\"). Please sign in to Windscribe and try again.",
+				})
+				return
+			}
 			task.Status = "CLI_ERROR"
 			o.db.RecordResult(task)
 			completedResults = append(completedResults, task)
@@ -378,12 +389,11 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				minBytesThreshold = uint64(targetVal) * 1024
 			}
 			targetLabel := fmt.Sprintf("%d %s", targetVal, unit)
-			totalWindowStr := fmt.Sprintf("%02d:%02d", maxSec/60, maxSec%60)
 
 			initialIn, initialOut, adapterFound := getPlatformWindscribeTrafficForProtocol(task.Protocol)
 
 			sendUpdate(EventUpdate{
-				Message: fmt.Sprintf("[%d/%d] Handshake reported on %s (%s:%d). Monitoring virtual adapter traffic flow (up to %ds, target: %s)...",
+				Message: fmt.Sprintf("[%d/%d] Handshake reported on %s (%s:%d). Verifying active adapter & traffic flow (window: %ds, target: %s)...",
 					currentTested, o.totalTasks, targetLoc, task.Protocol, task.Port, maxSec, targetLabel),
 				Status:  "Stabilizing...",
 			})
@@ -391,8 +401,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 			startTime := time.Now()
 			maxStabilizeTime := time.Duration(maxSec) * time.Second
 			isStable := false
-			lastLogTime := time.Now()
-			windscribeReconnecting := false
+			var lastTotalDiff uint64
 
 			// Launch background payload downloader to stimulate real packet flow through the adapter
 			probeCtx, cancelProbe := context.WithCancel(ctx)
@@ -447,13 +456,11 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					break
 				}
 
-				// 1. Verify Windscribe CLI status: detect if Windscribe dropped and entered internal reconnect loop
+				// 1. Verify Windscribe CLI status: detect if Windscribe dropped completely
 				statusOut, errStatus := o.worker.RunCLI(ctx, "status")
 				if errStatus == nil {
 					upperStatus := strings.ToUpper(statusOut)
-					if strings.Contains(upperStatus, "CONNECTING") {
-						windscribeReconnecting = true
-					} else if strings.Contains(upperStatus, "DISCONNECTED") {
+					if strings.Contains(upperStatus, "DISCONNECTED") && !strings.Contains(upperStatus, "DISCONNECTING") {
 						break
 					}
 				}
@@ -476,6 +483,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					outDiff = curOut - initialOut
 				}
 				totalDiff := inDiff + outDiff
+				lastTotalDiff = totalDiff
 
 				formatTransferred := func(b uint64) string {
 					if unit == "MB" || b >= 1024*1024 {
@@ -489,36 +497,11 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					isStable = true
 					cancelProbe()
 					sendUpdate(EventUpdate{
-						Message: fmt.Sprintf("Tunnel stabilized in %.1fs (Transferred: %s [↓%.1f KB / ↑%.1f KB] passed %s threshold).",
+						Message: fmt.Sprintf("Tunnel stabilized in %.1fs (Adapter active, transferred %s [↓%.1f KB / ↑%.1f KB] >= %s).",
 							time.Since(startTime).Seconds(), formatTransferred(totalDiff), float64(inDiff)/1024, float64(outDiff)/1024, targetLabel),
 						Status: "Stabilized",
 					})
 					break
-				}
-
-				// Periodic UI status update every 3 seconds while waiting
-				if time.Since(lastLogTime) >= 3*time.Second {
-					lastLogTime = time.Now()
-					elapsedSec := int(time.Since(startTime).Seconds())
-					elapsedStr := fmt.Sprintf("%02d:%02d", elapsedSec/60, elapsedSec%60)
-					statusHint := ""
-					if windscribeReconnecting {
-						statusHint = " [Windscribe retrying internally]"
-					}
-					if adapterFound {
-						sendUpdate(EventUpdate{
-							Message: fmt.Sprintf("[%d/%d] Stabilizing %s (%s / %s)%s — Adapter: %s (↓%.1f / ↑%.1f KB) / %s...",
-								currentTested, o.totalTasks, targetLoc, elapsedStr, totalWindowStr, statusHint,
-								formatTransferred(totalDiff), float64(inDiff)/1024, float64(outDiff)/1024, targetLabel),
-							Status: "Stabilizing...",
-						})
-					} else {
-						sendUpdate(EventUpdate{
-							Message: fmt.Sprintf("[%d/%d] Stabilizing %s (%s / %s)%s (waiting for virtual adapter)...",
-								currentTested, o.totalTasks, targetLoc, elapsedStr, totalWindowStr, statusHint),
-							Status: "Stabilizing...",
-						})
-					}
 				}
 
 				// Fallback if adapter statistics are not exposed by OS (e.g. locked down permissions)
@@ -545,7 +528,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				o.completedResults = completedResults
 				o.mu.Unlock()
 				sendUpdate(EventUpdate{
-					Message:     fmt.Sprintf("Tunnel stalled on %s (%s:%d): virtual adapter traffic did not reach %s within %ds (stuck in blinking/reconnect phase). Disconnecting cleanly.", targetLoc, task.Protocol, task.Port, targetLabel, maxSec),
+					Message:     fmt.Sprintf("Tunnel stalled on %s (%s:%d): transferred %.1f KB (< %s) within %ds. Disconnecting cleanly.", targetLoc, task.Protocol, task.Port, float64(lastTotalDiff)/1024, targetLabel, maxSec),
 					Status:      "Flapping",
 					TestedCount: len(completedResults),
 					TotalCount:  o.totalTasks,

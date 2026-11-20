@@ -73,14 +73,14 @@
                     </div>
 
                     <div id="injectionBody" style="display: flex; flex-direction: column; gap: 12px;">
-                        <div class="form-group" style="margin-bottom: 0;">
+                        <div class="form-group" id="tweaksModeGroup" style="margin-bottom: 0;">
                             <label for="protocolTweaksMode" style="margin-bottom: 6px; display: block;" data-i18n="protocolTweaks">Protocol Tweaks</label>
                             <select id="protocolTweaksMode" class="modern-select">
                                 <option value="Enabled" selected data-i18n="optEnabled">Enabled</option>
                                 <option value="Auto" data-i18n="optAuto">Auto</option>
                                 <option value="Disabled" data-i18n="optDisabled">Disabled</option>
                             </select>
-                            <div style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;" data-i18n="protocolTweaksDesc">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
+                            <div id="protocolTweaksDesc" style="font-size: 11px; color: #8b949e; margin-top: 6px; line-height: 1.35;" data-i18n="protocolTweaksDesc">Protocol-level changes made to WireGuard, OpenVPN, and Stealth protocols.</div>
                         </div>
 
                         <div class="form-group collapsible-field" id="amneziaGroup" style="margin-bottom: 0;">
@@ -127,7 +127,7 @@
                         <div class="form-group" id="sniContainer" style="margin-bottom: 0;">
                             <label style="margin-bottom: 6px; display: block;" data-i18n="customSni">Custom SNI Domain</label>
                             <input type="text" id="customSni" class="modern-input" placeholder="example.com (optional)" data-i18n-placeholder="sniPlaceholder">
-                            <small class="hint-text" style="display: block; margin-top: 6px;" data-i18n="sniHint">Applies to Stealth and Wstunnel protocols only.</small>
+                            <small id="sniHint" class="hint-text" style="display: block; margin-top: 6px;" data-i18n="sniHint">Applies to Stealth and Wstunnel protocols only.</small>
                         </div>
 
                         <div class="form-group" style="margin-bottom: 0;">
@@ -293,7 +293,14 @@
                         </svg>
                         <span data-i18n="openExcel">Open Excel (.xlsx)</span>
                     </button>
-                    <button class="settings-icon-btn" id="btnOpenSettings" type="button" title="Settings & Language">
+                    <button class="settings-icon-btn" id="btnOpenLang" type="button" title="Language">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                    </button>
+                    <button class="settings-icon-btn" id="btnOpenSettings" type="button" title="CLI Path Settings">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -368,7 +375,10 @@
                         <button class="tab-btn active" id="tabLiveConsole" type="button" data-i18n="liveConsole">🖥️ Live Console</button>
                         <button class="tab-btn" id="tabLiveTable" type="button"><span data-i18n="verifiedNodes">⚡ Verified Nodes</span> (<span id="connectedBadge" class="connected-badge">0</span>)</button>
                     </div>
-                    <button class="small-btn" id="btnClearLogs" type="button" data-i18n="clear">Clear</button>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <button class="small-btn" id="btnShareNodes" type="button" style="display:none; color:#58a6ff; border-color:rgba(56,139,253,0.4);" title="Share Verified Nodes">📤 Share</button>
+                        <button class="small-btn" id="btnClearLogs" type="button" data-i18n="clear">Clear</button>
+                    </div>
                 </div>
                 <div class="log-container tab-content" id="logConsole"></div>
                 <div class="tab-content" id="liveTableTab" style="display: none;">
@@ -379,7 +389,9 @@
                                     <th data-i18n="thLocation">Location</th>
                                     <th data-i18n="thProtocol">Protocol</th>
                                     <th data-i18n="thPreset">Preset</th>
+                                    <th>SNI</th>
                                     <th data-i18n="thPing">Ping</th>
+                                    <th>Jitter</th>
                                     <th data-i18n="thDownload">Download</th>
                                     <th data-i18n="thUpload">Upload</th>
                                     <th data-i18n="thTime">Time</th>
@@ -431,7 +443,8 @@
 
     <!-- Floating Test Matrix Counter -->
     <div id="floatingMatrixPill" class="floating-matrix-pill" title="Live Test Matrix & Estimated Time">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <span id="pillLiveDot" class="pill-live-dot" style="display:none;"></span>
+        <svg id="pillGridIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
             <rect x="3" y="3" width="7" height="7" rx="1"/>
             <rect x="14" y="3" width="7" height="7" rx="1"/>
             <rect x="3" y="14" width="7" height="7" rx="1"/>
@@ -446,33 +459,47 @@
         <span id="floatingMatrixEta">Est: ~0m</span>
     </div>
 
-    <!-- Settings & Custom CLI Path Modal -->
+    <!-- CLI Path Settings Modal (Separated from Language) -->
     <div id="settingsModal" class="dark-modal-backdrop" style="display:none;">
         <div class="dark-modal" style="width: 440px;">
             <div class="dark-modal-header" style="background: rgba(56, 139, 253, 0.08);">
                 <span class="dark-modal-icon">⚙️</span>
-                <span class="dark-modal-title" data-i18n="settingsTitle">Settings</span>
+                <span class="dark-modal-title" data-i18n="settingsTitle">CLI Path Settings</span>
                 <button type="button" id="settingsModalClose" class="toast-close" title="Close">✕</button>
             </div>
-            <div class="dark-modal-body" style="display:flex; flex-direction:column; gap:14px;">
-                <div class="form-group" style="margin-bottom:0;">
-                    <label for="settingsLangSelect" data-i18n="language">Language</label>
-                    <select id="settingsLangSelect" class="modern-select">
-                        <option value="en">🇬🇧 English</option>
-                        <option value="fa">🇮🇷 پارسی (Persian RTL)</option>
-                        <option value="ru">🇷🇺 Русский</option>
-                        <option value="zh">🇨🇳 简体中文</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom:0;">
-                    <label for="settingsCliPath" data-i18n="customCliPath">Custom windscribe-cli Path</label>
+            <div class="dark-modal-body" style="display:flex; flex-direction:column; gap:12px;">
+                <label class="master-checkbox-label" style="cursor:pointer; margin-bottom:0;">
+                    <input type="checkbox" id="useCustomCliPath">
+                    <span data-i18n="useCustomCliLabel">Use Custom windscribe-cli Path</span>
+                </label>
+                <div id="customCliPathBox" class="collapsible-field is-collapsed" style="margin-bottom:0;">
                     <input type="text" id="settingsCliPath" class="modern-input" placeholder="e.g. D:\Windscribe\windscribe-cli.exe">
-                    <div style="font-size:11px; color:#8b949e; margin-top:5px;" data-i18n="cliPathHint">Leave empty to use default system path.</div>
+                    <div style="font-size:11px; color:#8b949e; margin-top:5px;" data-i18n="cliPathHint">Specify full path to windscribe-cli executable.</div>
                 </div>
             </div>
             <div class="dark-modal-footer" style="gap:8px;">
                 <button type="button" id="settingsResetBtn" class="small-btn" style="padding:7px 14px;" data-i18n="resetDefault">Reset Default</button>
                 <button type="button" id="settingsSaveBtn" class="btn primary" style="padding:7px 20px;" data-i18n="saveSettings">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clean Share Verified Nodes Modal (Text + PNG Image) -->
+    <div id="shareModal" class="dark-modal-backdrop" style="display:none;">
+        <div class="dark-modal" style="width: 580px; max-width: 94vw;">
+            <div class="dark-modal-header" style="background: rgba(56, 139, 253, 0.08);">
+                <span class="dark-modal-icon">📤</span>
+                <span class="dark-modal-title">Share Verified Nodes</span>
+                <button type="button" id="shareModalClose" class="toast-close" title="Close">✕</button>
+            </div>
+            <div class="dark-modal-body" style="display:flex; flex-direction:column; gap:12px; max-height: 72vh; overflow-y: auto;">
+                <canvas id="sharePreviewCanvas" style="width:100%; border-radius:8px; border:1px solid #30363d; background:#0d1117;"></canvas>
+                <textarea id="shareTextArea" class="modern-input" rows="5" readonly style="font-family:monospace; font-size:11.5px; resize:vertical;"></textarea>
+            </div>
+            <div class="dark-modal-footer" style="gap:8px;">
+                <button type="button" id="btnCopyShareText" class="small-btn" style="padding:7px 14px;">📋 Copy Text</button>
+                <button type="button" id="btnCopyShareImg" class="small-btn" style="padding:7px 14px;">🖼️ Copy Image</button>
+                <button type="button" id="btnDownloadShareImg" class="btn primary" style="padding:7px 16px;">💾 Save PNG</button>
             </div>
         </div>
     </div>

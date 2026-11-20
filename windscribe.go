@@ -104,6 +104,9 @@ func (w *WindscribeWorker) ApplyConnectionTweaks(ctx context.Context, config Tes
 func (w *WindscribeWorker) Connect(ctx context.Context, city string, protocol string, port int) error {
 	targetArg := fmt.Sprintf("%s:%d", protocol, port)
 	out, err := w.RunCLI(ctx, "connect", "-n", city, targetArg)
+	if strings.Contains(strings.ToLower(out), "not logged in") || (err != nil && strings.Contains(strings.ToLower(err.Error()), "not logged in")) {
+		return fmt.Errorf("NOT_LOGGED_IN: Windscribe CLI is not logged in. Run \"windscribe-cli login\" or sign in via the Windscribe app")
+	}
 	if err != nil {
 		trimmed := strings.TrimSpace(out)
 		if trimmed != "" {
@@ -152,7 +155,9 @@ func (w *WindscribeWorker) WaitForConnectionWithRetry(ctx context.Context, timeo
 						if onRetry != nil {
 							onRetry(fmt.Sprintf("Windscribe still disconnected on %s (%s:%d); resetting state and retrying connect...", city, protocol, port))
 						}
+						_ = w.Disconnect(ctx)
 						_ = w.EnsureDisconnected(ctx)
+						time.Sleep(800 * time.Millisecond)
 						_ = w.Connect(ctx, city, protocol, port)
 					}
 				}

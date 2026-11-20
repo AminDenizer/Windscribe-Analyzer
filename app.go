@@ -97,6 +97,7 @@ func (a *App) startup(ctx context.Context) {
 	go func() {
 		_, _ = a.fetchLocations(false)
 		_, _ = a.fetchAmneziaConfigs(false)
+		a.pendingOnlineSync = true
 		a.UpdateOnlineResources()
 	}()
 }
@@ -285,10 +286,14 @@ func (a *App) fetchAmneziaConfigs(forceOnline bool) ([]AmneziaConfigItem, error)
 	return defaultAmneziaConfigs, nil
 }
 
-// UpdateOnlineResources updates both locations and configs in background once VPN is up
+// UpdateOnlineResources updates both locations and configs in background once VPN is up (only if pending)
 func (a *App) UpdateOnlineResources() {
 	a.syncMu.Lock()
 	defer a.syncMu.Unlock()
+
+	if !a.pendingOnlineSync {
+		return
+	}
 
 	// 1. Fetch live locations from Windscribe asset API
 	client := &http.Client{Timeout: 8 * time.Second}
@@ -313,6 +318,7 @@ func (a *App) UpdateOnlineResources() {
 					}
 				}
 				if len(locs) > 0 {
+					a.pendingOnlineSync = false
 					cachePath := getCachePath("cached_locations.json")
 					if data, err := json.MarshalIndent(locs, "", "  "); err == nil {
 						_ = os.WriteFile(cachePath, data, 0644)

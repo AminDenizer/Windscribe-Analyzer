@@ -389,6 +389,8 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
+let verifiedNodesList = [];
+
 function appendConnectedRow(item) {
     const tableBody = document.getElementById("realtimeTableBody");
     const emptyState = document.getElementById("tableEmptyState");
@@ -397,25 +399,37 @@ function appendConnectedRow(item) {
 
     if (emptyState) emptyState.style.display = "none";
 
+    verifiedNodesList.unshift(item);
     connectedCount++;
     if (badge) badge.innerText = connectedCount;
+
+    const btnShareNodes = document.getElementById("btnShareNodes");
+    const tabLiveTable = document.getElementById("tabLiveTable");
+    if (btnShareNodes && tabLiveTable && tabLiveTable.classList.contains("active")) {
+        btnShareNodes.style.display = "inline-flex";
+    }
 
     const row = document.createElement("tr");
     row.className = "row-success";
 
     const pingVal = item.ping > 0 ? `${Math.round(item.ping)} ms` : "--";
+    const jitterVal = item.jitter >= 0 && item.ping > 0 ? `${Math.round(item.jitter)} ms` : "--";
     const downVal = item.download > 0 ? `${item.download.toFixed(2)} Mbps` : "--";
     const upVal = item.upload > 0 ? `${item.upload.toFixed(2)} Mbps` : (item.upload === 0 ? "0.00 Mbps" : "--");
     const timeVal = item.timestamp ? (item.timestamp.split(" ")[1] || item.timestamp) : new Date().toLocaleTimeString();
     const presetVal = item.antiCensorshipMode && item.antiCensorshipMode !== "-" && item.antiCensorshipMode !== "None" ? item.antiCensorshipMode : "-";
+    const sniVal = item.customSni && item.customSni !== "-" ? item.customSni : "-";
+    const nickHtml = item.location ? ` <span style="color:#58a6ff; font-size:0.73rem;">(${escapeHtml(item.location)})</span>` : "";
 
     const cc = countryCodeToFlag(item.countryCode);
     const badgeHtml = cc ? `<span class="country-code-badge">${escapeHtml(cc)}</span>` : "";
     row.innerHTML = `
-        <td class="cell-loc">${badgeHtml}<span>${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || item.location || "")}</span></td>
+        <td class="cell-loc">${badgeHtml}<span>${escapeHtml(item.country || "")}</span> <span style="color:#8b949e; font-size:0.75rem;">${escapeHtml(item.city || "")}</span>${nickHtml}</td>
         <td class="cell-proto">${escapeHtml(item.protocol)}:${item.port}</td>
         <td class="cell-preset" style="color:#79c0ff; font-size:0.75rem;">${escapeHtml(presetVal)}</td>
+        <td style="color:#8b949e; font-size:0.75rem;">${escapeHtml(sniVal)}</td>
         <td class="cell-ping">${pingVal}</td>
+        <td style="color:#e3b341; font-size:0.78rem;">${jitterVal}</td>
         <td class="cell-speed">${downVal}</td>
         <td class="cell-speed" style="color:#d2a8ff;">${upVal}</td>
         <td style="color:#8b949e; font-size:0.75rem;">${escapeHtml(timeVal)}</td>
@@ -428,9 +442,12 @@ function resetConnectedTable() {
     const tableBody = document.getElementById("realtimeTableBody");
     const emptyState = document.getElementById("tableEmptyState");
     const badge = document.getElementById("connectedBadge");
+    const btnShareNodes = document.getElementById("btnShareNodes");
     if (tableBody) tableBody.innerHTML = "";
     if (emptyState) emptyState.style.display = "block";
     if (badge) badge.innerText = "0";
+    if (btnShareNodes) btnShareNodes.style.display = "none";
+    verifiedNodesList = [];
     connectedCount = 0;
 }
 
@@ -929,6 +946,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             tabLiveConsole.classList.remove("active");
             if (liveTableTab) liveTableTab.style.display = "block";
             if (logConsole) logConsole.style.display = "none";
+            const btnShareNodes = document.getElementById("btnShareNodes");
+            if (btnShareNodes) btnShareNodes.style.display = verifiedNodesList.length > 0 ? "inline-flex" : "none";
         });
 
         tabLiveConsole.addEventListener("click", () => {
@@ -936,6 +955,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             tabLiveTable.classList.remove("active");
             if (liveTableTab) liveTableTab.style.display = "none";
             if (logConsole) logConsole.style.display = "block";
+            const btnShareNodes = document.getElementById("btnShareNodes");
+            if (btnShareNodes) btnShareNodes.style.display = "none";
         });
     }
 
@@ -1081,8 +1102,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
+        if (update.errorTitle || update.errorMsg) {
+            stopCountdown();
+            showErrorModal(update.errorTitle || "Error", update.errorMsg || update.message);
+        }
+
+        if (update.totalCount > 0 && typeof update.testedCount === "number") {
+            syncCountdown(update.testedCount, update.totalCount);
+        }
+
         // Handle CanResume state
         if (update.canResume) {
+            stopCountdown();
             if (btnContinue) {
                 const remaining = update.totalCount - update.testedCount;
                 const remTxt = document.getElementById("remainingCountTxt");
@@ -1095,12 +1126,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             btnStop.disabled = true;
             btnStop.innerText = "STOP SESSION";
         } else if (update.status === "Done" || update.status === "Connected & Held") {
+            stopCountdown();
             if (btnContinue) btnContinue.style.display = "none";
             btnStart.innerText = "START ANALYZING";
             btnStart.disabled = false;
             btnStop.disabled = true;
             btnStop.innerText = "STOP SESSION";
         } else if (update.status === "Stopped") {
+            stopCountdown();
             btnStop.disabled = true;
             btnStop.innerText = "STOP SESSION";
             btnStart.disabled = false;
@@ -1144,6 +1177,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         hideExcelToast();
         
         logMsg(`Starting Windscribe Analyzer [ISP: ${config.isp}]...`, "log-success");
+        const estTests = (config.selectedLocations?.length || 1) * Object.values(config.protocolPorts || {}).reduce((a, b) => a + b.length, 0);
+        startCountdown(estTests);
         window.go.main.App.StartTest(config);
     });
 
@@ -1305,10 +1340,83 @@ document.addEventListener("DOMContentLoaded", async () => {
         shuffleProtos.addEventListener("change", syncShuffleMaster);
     }
 
-    // Floating Test Matrix Counter & ETA
-    function updateFloatingMatrix() {
-        const pillText = document.getElementById("floatingMatrixText");
+    // Floating Test Matrix Counter & Animated Live Countdown
+    let countdownTimer = null;
+    let remainingEtaSec = 0;
+    let isTestRunning = false;
+
+    function getPerTestSeconds() {
+        const speedWait = parseInt(document.getElementById("speedWait")?.value) || 5;
+        const engine = document.getElementById("speedEngine")?.value || "ookla";
+        return 10 + speedWait + (engine === "both" ? 22 : 12);
+    }
+
+    function formatCountdown(sec) {
+        const s = Math.max(0, Math.round(sec));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const remS = s % 60;
+        if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(remS).padStart(2, "0")}s`;
+        return `${String(m).padStart(2, "0")}:${String(remS).padStart(2, "0")}`;
+    }
+
+    function renderCountdownEta() {
         const pillEta = document.getElementById("floatingMatrixEta");
+        if (!pillEta) return;
+        const lang = localStorage.getItem("ws_lang") || "en";
+        const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+        if (isTestRunning) {
+            pillEta.textContent = `${t.matrixEst}: ${formatCountdown(remainingEtaSec)}`;
+        } else {
+            const estMin = remainingEtaSec > 0 ? Math.max(1, Math.round(remainingEtaSec / 60)) : 0;
+            pillEta.textContent = `${t.matrixEst}: ~${estMin}m`;
+        }
+    }
+
+    function startCountdown(totalTests) {
+        isTestRunning = true;
+        remainingEtaSec = Math.max(1, totalTests) * getPerTestSeconds();
+        const dot = document.getElementById("pillLiveDot");
+        const gridIcon = document.getElementById("pillGridIcon");
+        if (dot) dot.style.display = "inline-block";
+        if (gridIcon) gridIcon.style.display = "none";
+        renderCountdownEta();
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            if (remainingEtaSec > 0) remainingEtaSec--;
+            renderCountdownEta();
+        }, 1000);
+    }
+
+    function syncCountdown(tested, total) {
+        if (!isTestRunning) return;
+        const pillText = document.getElementById("floatingMatrixText");
+        if (pillText) {
+            const lang = localStorage.getItem("ws_lang") || "en";
+            const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+            pillText.textContent = `${tested} / ${total} ${t.matrixTests}`;
+        }
+        const rem = Math.max(0, total - tested);
+        remainingEtaSec = rem * getPerTestSeconds();
+        renderCountdownEta();
+    }
+
+    function stopCountdown() {
+        isTestRunning = false;
+        if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+        const dot = document.getElementById("pillLiveDot");
+        const gridIcon = document.getElementById("pillGridIcon");
+        if (dot) dot.style.display = "none";
+        if (gridIcon) gridIcon.style.display = "inline-block";
+        updateFloatingMatrix();
+    }
+
+    function updateFloatingMatrix() {
+        if (isTestRunning) return;
+        const pillText = document.getElementById("floatingMatrixText");
         if (!pillText) return;
         const lang = localStorage.getItem("ws_lang") || "en";
         const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -1320,14 +1428,49 @@ document.addEventListener("DOMContentLoaded", async () => {
         const portsCount = document.querySelectorAll('[class*="cb-port-"]:checked').length;
         const totalTests = locsCount * portsCount;
 
-        const speedWait = parseInt(document.getElementById("speedWait")?.value) || 5;
-        const engine = document.getElementById("speedEngine")?.value || "ookla";
-        const perTestSec = 10 + speedWait + (engine === "both" ? 22 : 12);
-        const estMinutes = totalTests > 0 ? Math.max(1, Math.round((totalTests * perTestSec) / 60)) : 0;
-
+        remainingEtaSec = totalTests * getPerTestSeconds();
         pillText.textContent = `${t.matrixPrefix}: ${locsCount} ${t.matrixLocs} • ${activeProtos} ${t.matrixProtos} • ${portsCount} ${t.matrixPorts} → ${totalTests} ${t.matrixTests}`;
-        if (pillEta) {
-            pillEta.textContent = `${t.matrixEst}: ~${estMinutes}m`;
+        renderCountdownEta();
+    }
+
+    // Smart Protocol-Dependent Guards for SNI & Protocol Tweaks / Amnezia Presets
+    function updateProtocolDependentGuards() {
+        const hasChecked = (proto) => document.querySelectorAll(`.cb-port-${proto}:checked`).length > 0;
+        const anyChecked = Object.keys(VALID_PROTOCOLS).some(hasChecked);
+        const hasSNIProto = !anyChecked || hasChecked("stealth") || hasChecked("wstunnel");
+        const hasTweakProto = !anyChecked || hasChecked("wireguard") || hasChecked("udp") || hasChecked("tcp") || hasChecked("stealth");
+
+        const sniContainer = document.getElementById("sniContainer");
+        const customSniInput = document.getElementById("customSni");
+        const sniHint = document.getElementById("sniHint");
+        if (sniContainer && customSniInput) {
+            sniContainer.classList.toggle("is-proto-disabled", !hasSNIProto);
+            customSniInput.disabled = !hasSNIProto;
+            if (sniHint) {
+                sniHint.textContent = hasSNIProto
+                    ? "Active for Stealth & WStunnel (automatically skipped for other protocols)."
+                    : "Disabled: None of the selected protocols support SNI (Stealth / WStunnel only).";
+            }
+        }
+
+        const tweaksGroup = document.getElementById("tweaksModeGroup");
+        const tweaksSelect = document.getElementById("protocolTweaksMode");
+        const tweaksDesc = document.getElementById("protocolTweaksDesc");
+        const amneziaSelect = document.getElementById("amneziaConfig");
+        const btnRefreshAmn = document.getElementById("btnRefreshAmnezia");
+        const amneziaGroup = document.getElementById("amneziaGroup");
+        if (tweaksGroup && tweaksSelect) {
+            tweaksGroup.classList.toggle("is-proto-disabled", !hasTweakProto);
+            tweaksSelect.disabled = !hasTweakProto;
+            if (!hasTweakProto) {
+                if (amneziaGroup) amneziaGroup.classList.add("is-collapsed");
+                if (amneziaSelect) amneziaSelect.disabled = true;
+                if (btnRefreshAmn) btnRefreshAmn.disabled = true;
+                if (tweaksDesc) tweaksDesc.textContent = "Disabled: Selected protocols (WStunnel / IKEv2) do not support Protocol Tweaks or Amnezia presets.";
+            } else {
+                if (tweaksDesc) tweaksDesc.textContent = "Applies to WireGuard, OpenVPN (UDP/TCP), and Stealth (skipped for WStunnel / IKEv2).";
+                updateTweaksState();
+            }
         }
     }
 
@@ -1342,11 +1485,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             Array.from(e.target.classList).some(c => c.startsWith("cb-port-"))
         )) {
             updateFloatingMatrix();
+            updateProtocolDependentGuards();
         }
     });
     updateFloatingMatrix();
+    updateProtocolDependentGuards();
 
-    // Multi-Language & Settings Modal + Custom CLI Path
+    // Multi-Language (Separated from CLI Path Settings)
     function applyLanguage(langCode) {
         const lang = TRANSLATIONS[langCode] ? langCode : "en";
         const dict = TRANSLATIONS[lang];
@@ -1368,27 +1513,38 @@ document.addEventListener("DOMContentLoaded", async () => {
         const btnStopEl = document.getElementById("btnStop");
         if (btnStopEl && btnStopEl.disabled) btnStopEl.textContent = dict.stopSession;
 
-        const langSel = document.getElementById("settingsLangSelect");
-        if (langSel) langSel.value = lang;
         updateFloatingMatrix();
     }
 
+    // CLI Path Settings Modal (Checkbox-controlled)
     const btnOpenSettings = document.getElementById("btnOpenSettings");
     const settingsModal = document.getElementById("settingsModal");
     const settingsModalClose = document.getElementById("settingsModalClose");
     const settingsSaveBtn = document.getElementById("settingsSaveBtn");
     const settingsResetBtn = document.getElementById("settingsResetBtn");
-    const settingsLangSelect = document.getElementById("settingsLangSelect");
+    const useCustomCliPath = document.getElementById("useCustomCliPath");
+    const customCliPathBox = document.getElementById("customCliPathBox");
     const settingsCliPath = document.getElementById("settingsCliPath");
 
+    const syncCustomCliBox = () => {
+        if (!useCustomCliPath || !customCliPathBox) return;
+        customCliPathBox.classList.toggle("is-collapsed", !useCustomCliPath.checked);
+        if (settingsCliPath) settingsCliPath.disabled = !useCustomCliPath.checked;
+    };
+    if (useCustomCliPath) {
+        useCustomCliPath.addEventListener("change", syncCustomCliBox);
+    }
+
+    const savedCliEnabled = localStorage.getItem("ws_custom_cli_enabled") === "true";
     const savedCliPath = localStorage.getItem("ws_custom_cli_path") || "";
-    if (savedCliPath && window.go?.main?.App?.SetCustomCLIPath) {
+    if (savedCliEnabled && savedCliPath && window.go?.main?.App?.SetCustomCLIPath) {
         window.go.main.App.SetCustomCLIPath(savedCliPath);
     }
 
     if (btnOpenSettings && settingsModal) {
         btnOpenSettings.addEventListener("click", async () => {
-            if (settingsLangSelect) settingsLangSelect.value = localStorage.getItem("ws_lang") || "en";
+            const enabled = localStorage.getItem("ws_custom_cli_enabled") === "true";
+            if (useCustomCliPath) useCustomCliPath.checked = enabled;
             if (settingsCliPath) {
                 let currentPath = localStorage.getItem("ws_custom_cli_path") || "";
                 if (!currentPath && window.go?.main?.App?.GetCustomCLIPath) {
@@ -1396,6 +1552,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
                 settingsCliPath.value = currentPath;
             }
+            syncCustomCliBox();
             settingsModal.style.display = "flex";
         });
     }
@@ -1407,21 +1564,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (settingsSaveBtn) {
         settingsSaveBtn.addEventListener("click", async () => {
-            if (settingsLangSelect) applyLanguage(settingsLangSelect.value);
-            if (settingsCliPath) {
-                const val = settingsCliPath.value.trim();
+            const enabled = useCustomCliPath ? useCustomCliPath.checked : false;
+            localStorage.setItem("ws_custom_cli_enabled", enabled ? "true" : "false");
+            const val = (enabled && settingsCliPath) ? settingsCliPath.value.trim() : "";
+            if (enabled) {
                 localStorage.setItem("ws_custom_cli_path", val);
-                if (window.go?.main?.App?.SetCustomCLIPath) {
-                    const resolved = await window.go.main.App.SetCustomCLIPath(val);
-                    logMsg(`[Settings] Windscribe CLI path set to: ${resolved}`, "log-info");
-                }
+            } else {
+                localStorage.removeItem("ws_custom_cli_path");
+            }
+            if (window.go?.main?.App?.SetCustomCLIPath) {
+                const resolved = await window.go.main.App.SetCustomCLIPath(val);
+                logMsg(`[Settings] Windscribe CLI path: ${resolved}`, "log-info");
             }
             if (settingsModal) settingsModal.style.display = "none";
         });
     }
     if (settingsResetBtn) {
         settingsResetBtn.addEventListener("click", async () => {
+            if (useCustomCliPath) useCustomCliPath.checked = false;
+            localStorage.setItem("ws_custom_cli_enabled", "false");
             localStorage.removeItem("ws_custom_cli_path");
+            syncCustomCliBox();
             if (window.go?.main?.App?.SetCustomCLIPath) {
                 const resolved = await window.go.main.App.SetCustomCLIPath("");
                 if (settingsCliPath) settingsCliPath.value = resolved;
@@ -1430,18 +1593,144 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // First-Run Language Onboarding
+    // Language Selector Modal (First-run + Header Globe Button)
     const onboardingModal = document.getElementById("onboardingLangModal");
-    const savedLang = localStorage.getItem("ws_lang");
-    if (!savedLang && onboardingModal) {
-        onboardingModal.style.display = "flex";
+    const btnOpenLang = document.getElementById("btnOpenLang");
+    if (onboardingModal) {
         onboardingModal.querySelectorAll(".lang-choice-btn").forEach(btn => {
             btn.addEventListener("click", () => {
                 applyLanguage(btn.dataset.lang || "en");
                 onboardingModal.style.display = "none";
             });
         });
+        onboardingModal.addEventListener("click", (e) => {
+            if (e.target === onboardingModal && localStorage.getItem("ws_lang")) {
+                onboardingModal.style.display = "none";
+            }
+        });
+    }
+    if (btnOpenLang && onboardingModal) {
+        btnOpenLang.addEventListener("click", () => {
+            onboardingModal.style.display = "flex";
+        });
+    }
+    const savedLang = localStorage.getItem("ws_lang");
+    if (!savedLang && onboardingModal) {
+        onboardingModal.style.display = "flex";
     } else {
         applyLanguage(savedLang || "en");
+    }
+
+    // Clean Share Verified Nodes (Text + PNG Card)
+    const btnShareNodes = document.getElementById("btnShareNodes");
+    const shareModal = document.getElementById("shareModal");
+    const shareModalClose = document.getElementById("shareModalClose");
+    const sharePreviewCanvas = document.getElementById("sharePreviewCanvas");
+    const shareTextArea = document.getElementById("shareTextArea");
+    const btnCopyShareText = document.getElementById("btnCopyShareText");
+    const btnCopyShareImg = document.getElementById("btnCopyShareImg");
+    const btnDownloadShareImg = document.getElementById("btnDownloadShareImg");
+
+    function renderShareContent() {
+        if (!sharePreviewCanvas || !shareTextArea) return;
+        const rows = verifiedNodesList.slice(0, 12);
+        const lines = ["Windscribe Analyzer — Verified Nodes", "========================================"];
+        rows.forEach((n, idx) => {
+            const nick = n.location ? ` (${n.location})` : "";
+            const sni = n.customSni && n.customSni !== "-" ? ` | SNI: ${n.customSni}` : "";
+            const preset = n.antiCensorshipMode && n.antiCensorshipMode !== "-" && n.antiCensorshipMode !== "None" ? ` | Preset: ${n.antiCensorshipMode}` : "";
+            lines.push(`${idx + 1}. ${n.country} - ${n.city}${nick} | ${n.protocol}:${n.port}${preset}${sni} | Ping: ${Math.round(n.ping)}ms (±${Math.round(n.jitter || 0)}ms) | ↓${(n.download || 0).toFixed(2)} ↑${(n.upload || 0).toFixed(2)} Mbps`);
+        });
+        shareTextArea.value = lines.join("\n");
+
+        const rowH = 30;
+        const headerH = 74;
+        const W = 780;
+        const H = headerH + Math.max(1, rows.length) * rowH + 24;
+        sharePreviewCanvas.width = W;
+        sharePreviewCanvas.height = H;
+        const ctx = sharePreviewCanvas.getContext("2d");
+        ctx.fillStyle = "#0d1117";
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = "#161b22";
+        ctx.fillRect(0, 0, W, 52);
+        ctx.fillStyle = "#58a6ff";
+        ctx.font = "bold 17px Segoe UI, sans-serif";
+        ctx.fillText("Windscribe Analyzer — Verified Nodes", 20, 32);
+        ctx.fillStyle = "#8b949e";
+        ctx.font = "12px Segoe UI, sans-serif";
+        ctx.fillText(`${verifiedNodesList.length} verified`, W - 95, 32);
+
+        ctx.fillStyle = "#8b949e";
+        ctx.font = "bold 11px Segoe UI, sans-serif";
+        ctx.fillText("LOCATION", 20, 68);
+        ctx.fillText("PROTOCOL", 270, 68);
+        ctx.fillText("SNI", 385, 68);
+        ctx.fillText("PING / JITTER", 495, 68);
+        ctx.fillText("DOWN / UP", 625, 68);
+
+        rows.forEach((n, idx) => {
+            const y = headerH + idx * rowH + 22;
+            if (idx % 2 === 1) {
+                ctx.fillStyle = "rgba(255,255,255,0.025)";
+                ctx.fillRect(10, y - 18, W - 20, rowH);
+            }
+            const locStr = `${n.country || ""} - ${n.city || ""}${n.location ? " (" + n.location + ")" : ""}`.slice(0, 32);
+            ctx.fillStyle = "#e6edf3";
+            ctx.font = "12px Segoe UI, sans-serif";
+            ctx.fillText(locStr, 20, y);
+
+            ctx.fillStyle = "#79c0ff";
+            ctx.fillText(`${n.protocol}:${n.port}`, 270, y);
+
+            ctx.fillStyle = "#8b949e";
+            ctx.fillText((n.customSni && n.customSni !== "-" ? n.customSni : "-").slice(0, 15), 385, y);
+
+            ctx.fillStyle = "#e3b341";
+            ctx.fillText(`${Math.round(n.ping)}ms (±${Math.round(n.jitter || 0)})`, 495, y);
+
+            ctx.fillStyle = "#3fb950";
+            ctx.fillText(`↓${(n.download || 0).toFixed(1)} ↑${(n.upload || 0).toFixed(1)}`, 625, y);
+        });
+    }
+
+    if (btnShareNodes && shareModal) {
+        btnShareNodes.addEventListener("click", () => {
+            renderShareContent();
+            shareModal.style.display = "flex";
+        });
+    }
+    if (shareModalClose) shareModalClose.addEventListener("click", () => { shareModal.style.display = "none"; });
+    if (shareModal) {
+        shareModal.addEventListener("click", (e) => {
+            if (e.target === shareModal) shareModal.style.display = "none";
+        });
+    }
+    if (btnCopyShareText && shareTextArea) {
+        btnCopyShareText.addEventListener("click", async () => {
+            await navigator.clipboard.writeText(shareTextArea.value);
+            btnCopyShareText.textContent = "✅ Copied!";
+            setTimeout(() => { btnCopyShareText.textContent = "📋 Copy Text"; }, 1500);
+        });
+    }
+    if (btnCopyShareImg && sharePreviewCanvas) {
+        btnCopyShareImg.addEventListener("click", () => {
+            sharePreviewCanvas.toBlob(async (blob) => {
+                if (blob && navigator.clipboard && window.ClipboardItem) {
+                    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+                    btnCopyShareImg.textContent = "✅ Copied!";
+                    setTimeout(() => { btnCopyShareImg.textContent = "🖼️ Copy Image"; }, 1500);
+                }
+            }, "image/png");
+        });
+    }
+    if (btnDownloadShareImg && sharePreviewCanvas) {
+        btnDownloadShareImg.addEventListener("click", () => {
+            const link = document.createElement("a");
+            link.download = `windscribe-verified-nodes-${Date.now()}.png`;
+            link.href = sharePreviewCanvas.toDataURL("image/png");
+            link.click();
+        });
     }
 });
