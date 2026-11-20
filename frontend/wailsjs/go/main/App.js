@@ -18,6 +18,10 @@ export function GetBestLocations() {
   return window['go']['main']['App']['GetBestLocations']();
 }
 
+export function GetCustomCLIPath() {
+  return window['go']['main']['App']['GetCustomCLIPath']();
+}
+
 export function GetOS() {
   return window['go']['main']['App']['GetOS']();
 }
@@ -36,6 +40,10 @@ export function RefreshAmneziaConfigs() {
 
 export function RefreshLocations() {
   return window['go']['main']['App']['RefreshLocations']();
+}
+
+export function SetCustomCLIPath(arg1) {
+  return window['go']['main']['App']['SetCustomCLIPath'](arg1);
 }
 
 export function StartTest(arg1) {

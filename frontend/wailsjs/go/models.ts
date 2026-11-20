@@ -77,6 +77,14 @@ export namespace main {
 	    testUpload: boolean;
 	    speedWait: number;
 	    timeout: number;
+	    stabilizeEnabled: boolean;
+	    stabilizeMinBytes: number;
+	    stabilizeUnit: string;
+	    stabilizeTimeout: number;
+	    speedEngine: string;
+	    shuffleLocations: boolean;
+	    shuffleProtocols: boolean;
+	    connectAndHold: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new TestConfig(source);
@@ -102,6 +110,14 @@ export namespace main {
 	        this.testUpload = source["testUpload"];
 	        this.speedWait = source["speedWait"];
 	        this.timeout = source["timeout"];
+	        this.stabilizeEnabled = source["stabilizeEnabled"];
+	        this.stabilizeMinBytes = source["stabilizeMinBytes"];
+	        this.stabilizeUnit = source["stabilizeUnit"];
+	        this.stabilizeTimeout = source["stabilizeTimeout"];
+	        this.speedEngine = source["speedEngine"];
+	        this.shuffleLocations = source["shuffleLocations"];
+	        this.shuffleProtocols = source["shuffleProtocols"];
+	        this.connectAndHold = source["connectAndHold"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

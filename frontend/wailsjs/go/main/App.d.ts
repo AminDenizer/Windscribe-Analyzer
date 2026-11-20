@@ -10,6 +10,8 @@ export function GetAmneziaConfigs():Promise<Array<main.AmneziaConfigItem>>;
 
 export function GetBestLocations():Promise<Array<main.TestResult>>;
 
+export function GetCustomCLIPath():Promise<string>;
+
 export function GetOS():Promise<string>;
 
 export function OpenExcelFile(arg1:string):Promise<void>;
@@ -19,6 +21,8 @@ export function ReadClientSettings():Promise<main.ClientSettingsSnapshot>;
 export function RefreshAmneziaConfigs():Promise<Array<main.AmneziaConfigItem>>;
 
 export function RefreshLocations():Promise<Array<main.LocationData>>;
+
+export function SetCustomCLIPath(arg1:string):Promise<string>;
 
 export function StartTest(arg1:main.TestConfig):Promise<void>;
 
