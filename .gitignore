@@ -5,3 +5,5 @@ frontend/dist
 *.exe
 *.log
 *.xlsx
+servers.html
+cached_*.json

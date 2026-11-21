@@ -95,3 +95,32 @@ func TestConnectErrorClassificationAndSessionStatus(t *testing.T) {
 		t.Fatalf("expected CLIFound=true, SessionLocked=true, got %+v", env2)
 	}
 }
+
+func TestGetBestLocationsScansCountryCode(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_best.db")
+	dbm, err := NewDatabaseManager(dbPath)
+	if err != nil {
+		t.Fatalf("NewDatabaseManager: %v", err)
+	}
+	defer dbm.db.Close()
+	dbm.RecordResult(TestResult{
+		Location:    "Crumpets",
+		City:        "London",
+		Country:     "United Kingdom",
+		CountryCode: "GB",
+		Continent:   "Europe",
+		Protocol:    "stealth",
+		Port:        443,
+		Status:      "SUCCESS",
+		Download:    15.5,
+		Ping:        120,
+		Timestamp:   "2026-11-21 04:00:00",
+	})
+	best, err := dbm.GetBestLocations()
+	if err != nil {
+		t.Fatalf("GetBestLocations error: %v", err)
+	}
+	if len(best) != 1 || best[0].CountryCode != "GB" {
+		t.Fatalf("expected CountryCode='GB', got %+v", best)
+	}
+}

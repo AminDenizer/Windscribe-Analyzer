@@ -20,6 +20,7 @@ type Orchestrator struct {
 	worker           *WindscribeWorker
 	cancel           context.CancelFunc
 	mu               sync.Mutex
+	runMu            sync.Mutex
 	remainingQueue   []TestResult
 	completedResults []TestResult
 	totalTasks       int
@@ -79,12 +80,25 @@ type EventUpdate struct {
 
 func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig, onConnected func(), sendUpdate func(EventUpdate)) {
 	o.mu.Lock()
+	if o.cancel != nil {
+		o.cancel()
+		o.cancel = nil
+	}
+	o.mu.Unlock()
+
+	o.runMu.Lock()
+	defer o.runMu.Unlock()
+
+	o.mu.Lock()
 	ctx, cancel := context.WithCancel(parentCtx)
 	o.cancel = cancel
+	keepConnectedOnExit := false
 	defer func() {
-		stopCtx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
-		defer cancel()
-		_ = o.worker.EnsureDisconnected(stopCtx)
+		if !keepConnectedOnExit {
+			stopCtx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+			defer cancel()
+			_ = o.worker.EnsureDisconnected(stopCtx)
+		}
 	}()
 
 	var queue []TestResult
@@ -816,6 +830,7 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 				}
 			}
 
+			keepConnectedOnExit = true
 			sendUpdate(EventUpdate{
 				Message:     fmt.Sprintf("Paused on first connected node: %s (%s:%d). Windscribe stays connected (%d remaining in queue).", targetLoc, task.Protocol, task.Port, remCount),
 				Status:      "Connected (Paused)",

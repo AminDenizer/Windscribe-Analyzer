@@ -370,6 +370,19 @@ func readPlatformClientSettings() (*ClientSettingsSnapshot, error) {
 			default:
 				snap.ServerRouting = "Auto"
 			}
+		case "DNSPolicy":
+			switch strings.ToLower(v) {
+			case "0", "os default":
+				snap.InternalDNS = "OS Default"
+			case "1", "open dns", "opendns":
+				snap.InternalDNS = "OpenDNS"
+			case "2", "cloudflare":
+				snap.InternalDNS = "Cloudflare"
+			case "4", "controld", "control d":
+				snap.InternalDNS = "Control D"
+			default:
+				snap.InternalDNS = "Google"
+			}
 		}
 	}
 

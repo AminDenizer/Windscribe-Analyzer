@@ -227,7 +227,7 @@ func (m *DatabaseManager) GetAllResults() ([]TestResult, error) {
 }
 
 func (m *DatabaseManager) GetBestLocations() ([]TestResult, error) {
-	query := `SELECT id, location, city, country, continent, protocol, port, status, duration, ping, jitter, download, upload, profile_name, protocol_tweaks, anti_censorship_mode, server_routing, custom_sni, large_tls, internal_dns, isp, timestamp 
+	query := `SELECT id, location, city, country, COALESCE(country_code, ''), continent, protocol, port, status, duration, ping, jitter, download, upload, profile_name, protocol_tweaks, anti_censorship_mode, server_routing, custom_sni, large_tls, internal_dns, isp, timestamp 
 	          FROM tests WHERE status='SUCCESS' ORDER BY download DESC, ping ASC LIMIT 50`
 	rows, err := m.db.Query(query)
 	if err != nil {
@@ -239,7 +239,7 @@ func (m *DatabaseManager) GetBestLocations() ([]TestResult, error) {
 	for rows.Next() {
 		var r TestResult
 		err := rows.Scan(
-			&r.ID, &r.Location, &r.City, &r.Country, &r.Continent,
+			&r.ID, &r.Location, &r.City, &r.Country, &r.CountryCode, &r.Continent,
 			&r.Protocol, &r.Port, &r.Status, &r.Duration, &r.Ping,
 			&r.Jitter, &r.Download, &r.Upload, &r.ProfileName,
 			&r.ProtocolTweaks, &r.AntiCensorshipMode, &r.ServerRouting,
