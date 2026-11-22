@@ -183,28 +183,12 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            ## 🚀 Windscribe Ultra Analyzer Pro (${{ github.ref_name }})
+            ## Windscribe Ultra Analyzer (${{ github.ref_name }})
 
-            ### 🌍 Multi-Platform Standalone Packages
+            ### Downloads
             - **Windows (x64)**: `windscribe-ultra-tester.exe` / `windscribe-ultra-tester-windows-amd64.zip`
             - **macOS (Universal - Apple Silicon & Intel)**: `windscribe-ultra-tester-macos-universal.zip` (`.app` bundle)
             - **Linux (x64)**: `windscribe-ultra-tester-linux-amd64.tar.gz`
-            - **Security & Integrity**: `checksums.txt` (SHA-256 for all artifacts)
+            - **Checksums**: `checksums.txt` (SHA-256)
 
-            ### 🌟 Key Features & Capabilities
-            - **Network Country & Dynamic Operator (ISP) Selection**:
-              - Pre-configured profiles for **Iran** (`MCI`, `Irancell`, `Rightel`, `Mokhaberat`, `Shatel`, `Asiatech`, `Mobinnet`, `Zitel`, `HiWeb`, `Pars Online`, `Pishgaman`, `Fanava`, etc.) and **Russia** (`Rostelecom`, `MTS`, `Beeline`, `MegaFon`, `Tele2`, `ER-Telecom / Dom.ru`, `NetByNet`, etc.).
-              - In-app custom additions for any country or operator with persistent storage.
-            - **Multi-Location Testing**: Comprehensive testing across global Windscribe server nodes categorized by Continent, Country, and Location with real-time fuzzy search.
-            - **Multi-Protocol & Port Scanning**: Native benchmarking across WireGuard, UDP, TCP, Stealth, WStunnel, and IKEv2 on all censorship-evasion ports.
-            - **Anti-Censorship & Amnezia Tweak Matrix**: Full support for Amnezia junk packets (Iran, UAE, Russia profiles), server routing (Auto/Regular/Alternate), large TLS padding, and domain fronting via Custom SNI.
-            - **Reliable Lifecycle Management**: Clean and guaranteed disconnect of the Windscribe VPN client on test completion, timeouts, or user pause.
-            - **Real-Time Live Telemetry**: Dynamic live dashboard streaming Ping, Jitter, Download, and Upload speeds before transitioning to the next target.
-            - **Automated Color-Coded Excel Quality Reports**: Auto-exports formatted `.xlsx` matrices after every test session (Green: Healthy, Yellow: Moderate, Red: Unusable).
-            - **Stateful Pause & Resume**: Stop at any time with immediate CLI disconnection, and resume remaining queue anytime.
-
-            ### 📥 Installation & Run
-            - **Windows**: Download `windscribe-ultra-tester.exe` (or zip) and run.
-            - **macOS**: Download `windscribe-ultra-tester-macos-universal.zip`, extract `windscribe-ultra-tester.app` to Applications, and launch.
-            - **Linux**: Download `windscribe-ultra-tester-linux-amd64.tar.gz`, extract and run `./windscribe-ultra-tester`.
-            - *Prerequisite*: Make sure the official **Windscribe desktop application / CLI** is installed on your machine.
+            > **Prerequisite**: Install and sign in to the official **Windscribe desktop application / CLI** before running.
