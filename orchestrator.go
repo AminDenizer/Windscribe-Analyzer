@@ -712,7 +712,13 @@ func (o *Orchestrator) StartTesting(parentCtx context.Context, config TestConfig
 					})
 					s.PingTest(nil)
 					task.Ping = float64(s.Latency.Milliseconds())
+					if task.Ping < 0 {
+						task.Ping = 0
+					}
 					task.Jitter = float64(s.Jitter.Milliseconds())
+					if task.Jitter < 0 || task.Jitter > 60000 {
+						task.Jitter = 0
+					}
 					sendUpdate(EventUpdate{
 						Ping:    fmt.Sprintf("%.0f ms (Jitter: %.0f ms)", task.Ping, task.Jitter),
 						Message: fmt.Sprintf("Ookla Ping: %.0f ms, Jitter: %.0f ms", task.Ping, task.Jitter),

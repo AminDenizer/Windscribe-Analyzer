@@ -554,7 +554,8 @@ function buildVerifiedRow(item) {
     row.className = "row-success";
 
     const pingVal = item.ping > 0 ? `${Math.round(item.ping)} ms` : "--";
-    const jitterVal = item.jitter >= 0 && item.ping > 0 ? `${Math.round(item.jitter)} ms` : "--";
+    const safeJitter = (item.jitter >= 0 && item.jitter <= 60000) ? Math.round(item.jitter) : 0;
+    const jitterVal = item.ping > 0 ? `${safeJitter} ms` : "--";
     const downVal = item.download > 0 ? `${item.download.toFixed(2)} Mbps` : "--";
     const upVal = item.upload > 0 ? `${item.upload.toFixed(2)} Mbps` : (item.upload === 0 ? "0.00 Mbps" : "--");
     const timeVal = item.timestamp ? (item.timestamp.split(" ")[1] || item.timestamp) : new Date().toLocaleTimeString();
@@ -1979,7 +1980,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const nick = n.location ? ` (${n.location})` : "";
             const sni = n.customSni && n.customSni !== "-" ? ` | SNI: ${n.customSni}` : "";
             const preset = n.antiCensorshipMode && n.antiCensorshipMode !== "-" && n.antiCensorshipMode !== "None" ? ` | Preset: ${n.antiCensorshipMode}` : "";
-            lines.push(`${idx + 1}. ${n.country} - ${n.city}${nick} | ${n.protocol}:${n.port}${preset}${sni} | Ping: ${Math.round(n.ping)}ms (±${Math.round(n.jitter || 0)}ms) | ↓${(n.download || 0).toFixed(2)} ↑${(n.upload || 0).toFixed(2)} Mbps`);
+            const safeJ = (n.jitter >= 0 && n.jitter <= 60000) ? Math.round(n.jitter) : 0;
+            lines.push(`${idx + 1}. ${n.country} - ${n.city}${nick} | ${n.protocol}:${n.port}${preset}${sni} | Ping: ${Math.round(n.ping)}ms (±${safeJ}ms) | ↓${(n.download || 0).toFixed(2)} ↑${(n.upload || 0).toFixed(2)} Mbps`);
         });
         shareTextArea.value = lines.join("\n");
 
@@ -2036,11 +2038,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.fillStyle = "#8b949e";
             ctx.fillText(n.customSni && n.customSni !== "-" ? n.customSni : "-", 590, y, 95);
 
+            const safeJ = (n.jitter >= 0 && n.jitter <= 60000) ? Math.round(n.jitter) : 0;
             ctx.fillStyle = "#e3b341";
-            ctx.fillText(`${Math.round(n.ping)}ms (±${Math.round(n.jitter || 0)})`, 695, y);
+            ctx.fillText(`${Math.round(n.ping)}ms (±${safeJ})`, 695, y, 110);
 
             ctx.fillStyle = "#3fb950";
-            ctx.fillText(`↓${(n.download || 0).toFixed(1)} ↑${(n.upload || 0).toFixed(1)}`, 815, y);
+            ctx.fillText(`↓${(n.download || 0).toFixed(1)} ↑${(n.upload || 0).toFixed(1)}`, 815, y, 115);
         });
     }
 

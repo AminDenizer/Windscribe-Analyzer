@@ -620,7 +620,9 @@ input:checked + .slider:before {
 
 .table-scroll-container {
     flex: 1;
+    overflow-x: auto;
     overflow-y: auto;
+    max-width: 100%;
     background: #06080c;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -629,6 +631,7 @@ input:checked + .slider:before {
 
 .realtime-table {
     width: 100%;
+    min-width: 780px;
     border-collapse: collapse;
     font-size: 0.82rem;
     text-align: left;
